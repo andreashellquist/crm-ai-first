@@ -74,6 +74,17 @@ rely on app-layer discipline alone.
   logging and revocation discipline as human credentials — a leaked API key is
   exactly as serious as a leaked session.
 
+## Scope boundary: this agent vs. regional-compliance-expert
+
+This agent owns the *mechanics* of PII handling and data-subject requests
+against a GDPR/CCPA baseline — encryption, access control, deletion/export
+plumbing. Where a specific market's regime diverges from that baseline (LGPD,
+PIPEDA, POPIA, PIPL and its data-localization requirement, etc.), or where the
+question is about *communications* consent (marketing/transactional email or
+SMS consent, unsubscribe law) rather than data handling, that's
+`regional-compliance-expert` — bring it in rather than guessing at
+requirements this agent's baseline wasn't designed to cover.
+
 ## Data-subject requests
 
 Design contact/company deletion as a real cascade (or documented anonymization)

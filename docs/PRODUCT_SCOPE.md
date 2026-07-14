@@ -62,6 +62,7 @@ target phase (§6).
 | Lead/deal scoring & next-best-action | Structured, explainable scoring; suggested-action cards | `ai-features-architect`, `lead-deal-scoring` | 1 |
 | Data import & cleanliness | CSV import, dedup, ongoing merge tooling | `backend-api-engineer`, `csv-import-dedupe` | 1 |
 | Email & calendar integration | Gmail/Outlook OAuth sync, meeting capture into Activities | `integrations-engineer` | 2 |
+| Communication consent & suppression | Per-contact/channel consent tracking, unsubscribe handling, gate on every send path (AI or manual) | **new** `regional-compliance-expert`, **new** `communication-consent-and-suppression` | 2 — ships with email sending, blocking (not deferrable to Phase 4) |
 | Notifications | In-app + email digest, per-user preferences | `backend-api-engineer`, `frontend-engineer`, **new** `notifications-and-digests` | 2 |
 | Search & saved views | Cross-entity search, filters, shareable saved views | `database-schema-expert`, `frontend-engineer` | 2 |
 | Billing & plans | Stripe subscriptions, usage-based limits/metering | `integrations-engineer` | 2 |
@@ -70,7 +71,9 @@ target phase (§6).
 | Observability & reliability | Logging, tracing, error tracking, alerting, SLOs, backup/DR | **new** `devops-observability-expert`, **new** `observability-and-slo` | 0 baseline, 3 maturity |
 | Public API & outbound webhooks | API keys, scoped access, rate limits, customer-facing webhooks | **new** `api-platform-expert`, **new** `public-api-and-webhooks` | 4 |
 | Enterprise auth | SSO (SAML/OIDC), SCIM provisioning, custom roles/permissions | `auth-security-expert` (extended) | 4 |
-| Internationalization | Multi-currency, timezone-correct scheduling, locale formatting | **new** `i18n-currency-timezone` | 4 (architecture) / later (full translation) |
+| Regional privacy law & data residency | Characterize per-region requirements beyond the GDPR/CCPA baseline; flag data-localization infra needs early | **new** `regional-compliance-expert` | 4 (flag early if a specific deal requires it sooner) |
+| Localized billing & tax | VAT/GST display, VAT number capture, e-invoicing mandates | **new** `regional-compliance-expert`, `integrations-engineer` | 4 |
+| Locale-aware formatting | Multi-currency display, timezone-correct scheduling, number/date formatting (not UI translation) | **new** `i18n-currency-timezone` | 4 (architecture) / later (full translation) |
 | Accessibility | WCAG 2.1 AA across core flows | `frontend-engineer` (extended) | Ongoing from Phase 0, audited at Phase 3 |
 | Testing & quality gates | Unit/integration/e2e, AI eval sets, multi-tenant isolation tests | `qa-test-engineer` | Every phase |
 
@@ -122,14 +125,16 @@ target phase (§6).
   come later), CI/CD, baseline observability (error tracking + structured logs).
 - **Phase 1 — AI-first core**: tool-calling framework, drafting, summarization,
   scoring, next-best-action, background job queue, AI eval harness.
-- **Phase 2 — Connected & informed**: email/calendar sync, CSV import/dedupe,
-  notifications, search/saved views, billing.
+- **Phase 2 — Connected & informed**: email/calendar sync *with consent/
+  suppression gating built in from the start, not bolted on later*, CSV
+  import/dedupe, notifications, search/saved views, billing.
 - **Phase 3 — Insight & modularity**: reporting/dashboards, read models, vertical
   starter templates polished into a real onboarding flow, first optional module
   shipped end-to-end (proves the module pattern with a real vertical, e.g.
   real-estate listings), accessibility audit.
 - **Phase 4 — Enterprise & platform**: SSO/SCIM, custom roles, public API +
-  outbound webhooks, i18n (multi-currency/timezone), SOC 2 readiness push.
+  outbound webhooks, locale-aware formatting (multi-currency/timezone), regional
+  privacy-law/data-residency review, localized billing/tax, SOC 2 readiness push.
 
 ## 7. Expert/skill coverage
 
@@ -152,7 +157,22 @@ areas that fit naturally within an existing owner's remit: enterprise auth
 (SSO/SCIM/custom roles) into `auth-security-expert`; usage-based billing into
 `integrations-engineer`; notifications into `backend-api-engineer` +
 `frontend-engineer` with a new `notifications-and-digests` skill (cross-cutting,
-not deep enough for its own agent); i18n into a skill (`i18n-currency-timezone`)
-consumed by `database-schema-expert` and `frontend-engineer` rather than a new
-agent, since it's a set of conventions more than an ongoing area of judgment
-calls.
+not deep enough for its own agent); locale-aware formatting into a skill
+(`i18n-currency-timezone`) consumed by `database-schema-expert` and
+`frontend-engineer` rather than a new agent, since it's a set of conventions
+more than an ongoing area of judgment calls.
+
+**Second pass — legal/cultural market differences.** The first scoping pass
+treated "different markets" mainly as geography-flavored i18n (currency,
+timezone, formatting). A follow-up review surfaced that the more consequential
+gap was regulatory, not linguistic: this product's AI can autonomously *send*
+communications on a user's behalf, and communication-consent law (CAN-SPAM,
+CASL, GDPR/ePrivacy, TCPA) varies by market in ways that create real legal risk
+if defaulted wrong — plus data-residency/privacy-law variation beyond the
+GDPR/CCPA baseline and localized billing/tax rules. Added
+`regional-compliance-expert` (explicitly framed as engineering guardrails, not
+legal advice) and `communication-consent-and-suppression` (the concrete
+consent/suppression data model gating every send path). Unlike the other Phase
+4 enterprise items, the consent-gating piece ships with email sending in
+Phase 2 — it's a launch requirement for that feature, not a later hardening
+pass.

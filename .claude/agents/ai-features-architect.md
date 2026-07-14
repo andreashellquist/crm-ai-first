@@ -41,6 +41,12 @@ matter more than in a typical "add a chatbot" feature.
 - **Email drafting** — retrieve the contact/deal's recent Activities, the sender's
   prior emails to that contact (for tone), and any explicit instruction from the
   user, then draft. Always a draft in an editable compose box, never auto-sent.
+  Before any actual send — AI-drafted or human-typed — the shared send function
+  checks the contact's consent/suppression status per the
+  `communication-consent-and-suppression` skill; the AI having "just" drafted
+  it is not an exception to that gate, and the compose UI should surface a
+  blocked-recipient reason rather than let the user discover it as a failed
+  send.
 - **Summarization** — summarize on read (cached, invalidated on new Activity),
   not on every page load; long deal histories should get an incremental summary
   (summarize new activities + fold into prior summary) rather than re-summarizing

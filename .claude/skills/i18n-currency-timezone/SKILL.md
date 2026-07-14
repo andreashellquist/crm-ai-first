@@ -1,13 +1,19 @@
 ---
 name: i18n-currency-timezone
-description: Conventions for multi-currency, timezone-correct scheduling, and locale-aware formatting in this CRM, so the architecture doesn't block serving customers across geographic markets even though full UI translation isn't a v1 deliverable. Load this when touching Deal amounts, dates/times shown to users, or any place a number/date is formatted for display.
+description: Conventions for multi-currency, timezone-correct scheduling, and locale-aware number/date formatting in this CRM, so the architecture doesn't block serving customers across geographic markets even though full UI translation isn't a v1 deliverable. Load this when touching Deal amounts, dates/times shown to users, or any place a number/date is formatted for display.
 ---
 
-# Internationalization: currency, timezone, locale
+# Locale-aware formatting: currency, timezone, numbers/dates
 
-Per `docs/PRODUCT_SCOPE.md`, full UI translation is not a v1 commitment, but the
-architecture must not make it hard later — these conventions are the cheap part
-to get right early.
+**Scope note**: despite the filename, this is *not* language localization
+(translated UI strings) — that's explicitly deferred per `docs/PRODUCT_SCOPE.md`
+and out of scope until there's real demand. This skill is the narrower, cheap-
+to-get-right-early part: don't bake in USD/UTC/en-US assumptions at the data
+layer. It's also not where legal/cultural differences between markets belong —
+communication-consent law, data residency, and localized tax/billing rules are
+`regional-compliance-expert`'s territory (see `communication-consent-and-
+suppression` for the consent-gating pattern specifically); this skill is display
+formatting only, not compliance.
 
 ## Currency
 

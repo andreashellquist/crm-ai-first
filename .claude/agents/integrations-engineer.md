@@ -21,6 +21,10 @@ model right early.
 - Outbound send (AI-drafted emails) goes through the provider's send API so it
   lands in the user's own Sent folder and reply thread — don't send from a
   third-party relay the customer won't recognize, and don't fake thread headers.
+  Every send — marketing or transactional — routes through the shared
+  consent-gated send function (`communication-consent-and-suppression` skill,
+  owned by `regional-compliance-expert`); this integration is a transport, not
+  a place to re-implement or bypass that check.
 - Sync should be incremental (webhook/push notification where the provider
   supports it — Gmail push via Pub/Sub, Graph via webhooks — falling back to
   periodic delta sync), not a full mailbox re-scan on every run.
