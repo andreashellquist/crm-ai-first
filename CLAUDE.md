@@ -7,13 +7,20 @@ the fallback, not the primary interface.
 
 ## Status
 
-This repo currently contains no application code. What's checked in so far is the
-stack decision (this file), the full product scope (`docs/PRODUCT_SCOPE.md` —
-functional scope, non-functional bar, phased roadmap, and explicit assumptions
-made to resolve an intentionally vague brief), and a set of Claude Code experts
-(`.claude/agents/`, `.claude/skills/`) meant to keep implementation consistent
-once building starts. Read `docs/PRODUCT_SCOPE.md` before starting a new feature
-area — it says what phase it belongs to and which expert owns it.
+Phase 0 walking skeleton is in place: Next.js app with Auth.js (dev-only
+Credentials login — see `auth-security-expert` before adding real OAuth),
+Prisma/Postgres persisting the `crm-data-model` subset needed for it (Workspace,
+WorkspaceMember, Contact, Company, Pipeline, Stage, Deal), a contacts list +
+create form, and a pipeline Kanban board with a working (non-drag, accessible)
+stage-move control. Run it via the README's "Getting started" section.
+
+Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
+bar, phased roadmap, and the explicit assumptions made to resolve an
+intentionally vague brief — is still ahead. Read it before starting a new
+feature area; it says what phase the feature belongs to and which expert agent
+in `.claude/agents/` owns it. Notably not yet built: Activity/Task entities,
+drag-and-drop on the pipeline board, background jobs, any AI feature, tests,
+and CI.
 
 ## Chosen stack
 
