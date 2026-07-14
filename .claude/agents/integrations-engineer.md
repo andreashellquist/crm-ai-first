@@ -45,6 +45,15 @@ webhook (`customer.subscription.updated` etc.), not queried live from Stripe on
 every request. Verify webhook signatures — see `backend-api-engineer` for the
 handler pattern.
 
+For usage-based limits (seats, AI-call volume, contact count caps per plan):
+track usage counters incrementally (per-workspace counters updated as usage
+happens, not recomputed by scanning tables on every check) and enforce limits
+at the point of action (block creating the Nth+1 contact, throttle AI calls once
+a plan's monthly allotment is exhausted) with a clear, actionable message —
+never a silent failure. Report usage to Stripe for metered billing via its
+usage-record API on a schedule, not synchronously in the request path that
+generated the usage.
+
 ## General integration principles
 
 - Every integration is opt-in per workspace and independently revocable — a

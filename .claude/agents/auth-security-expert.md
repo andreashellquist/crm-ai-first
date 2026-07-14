@@ -1,6 +1,6 @@
 ---
 name: auth-security-expert
-description: Authentication, authorization, and data-privacy expert for this CRM. Use for login/session design (Auth.js/NextAuth), workspace-based RBAC, multi-tenant data isolation review, handling customer PII (emails, phone numbers, deal values) safely, GDPR/CCPA-style data-subject requests (export/delete), audit logging, and secrets/credentials handling for third-party integrations (email/calendar OAuth tokens). Use proactively before shipping any feature that touches auth, permissions, or PII.
+description: Authentication, authorization, and data-privacy expert for this CRM. Use for login/session design (Auth.js/NextAuth), workspace-based RBAC, enterprise auth (SSO/SAML/OIDC, SCIM provisioning, custom roles), multi-tenant data isolation review, handling customer PII (emails, phone numbers, deal values) safely, GDPR/CCPA-style data-subject requests (export/delete), audit logging, and secrets/credentials handling for third-party integrations (email/calendar OAuth tokens, API keys). Use proactively before shipping any feature that touches auth, permissions, or PII.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
 ---
@@ -52,6 +52,27 @@ rely on app-layer discipline alone.
 - Encrypt OAuth tokens and other third-party credentials (email/calendar
   integration secrets) at rest, not just at the DB-provider level — application-
   level encryption so a DB dump alone doesn't leak usable credentials.
+
+## Enterprise auth (Phase 4, per `docs/PRODUCT_SCOPE.md`)
+
+- **SSO (SAML/OIDC)**: per-workspace SSO configuration, not a global setting —
+  a workspace admin connects their IdP; when enabled, decide explicitly whether
+  it's enforced (password/OAuth login disabled) or additive, and default to
+  "admin can enforce it" rather than silently disabling other login methods.
+- **SCIM provisioning**: automated user provisioning/deprovisioning from the
+  customer's IdP maps to `WorkspaceMember` create/deactivate — a deprovisioned
+  user must lose access immediately (session invalidation), not just stop
+  appearing in a directory sync.
+- **Custom roles**: the `owner`/`admin`/`member` set is the v1 floor; when
+  customers need finer-grained permissions (e.g. "can view deals but not
+  amounts," "can manage own pipeline only"), model it as a permission set
+  attached to a role rather than one-off boolean flags scattered across
+  `WorkspaceMember` — keep the permission check call sites the same
+  (`can(user, action, resource)`) so adding granularity later doesn't require
+  touching every call site again.
+- API keys (`api-platform-expert`'s `ApiKey` model) go through the same audit-
+  logging and revocation discipline as human credentials — a leaked API key is
+  exactly as serious as a leaked session.
 
 ## Data-subject requests
 

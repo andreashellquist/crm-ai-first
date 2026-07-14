@@ -8,8 +8,12 @@ the fallback, not the primary interface.
 ## Status
 
 This repo currently contains no application code. What's checked in so far is the
-stack decision (this file) and a set of Claude Code experts (`.claude/agents/`,
-`.claude/skills/`) meant to keep implementation consistent once building starts.
+stack decision (this file), the full product scope (`docs/PRODUCT_SCOPE.md` —
+functional scope, non-functional bar, phased roadmap, and explicit assumptions
+made to resolve an intentionally vague brief), and a set of Claude Code experts
+(`.claude/agents/`, `.claude/skills/`) meant to keep implementation consistent
+once building starts. Read `docs/PRODUCT_SCOPE.md` before starting a new feature
+area — it says what phase it belongs to and which expert owns it.
 
 ## Chosen stack
 
@@ -31,6 +35,10 @@ turn out to need something these don't fit.
   for anything that calls an LLM or a third-party API, so request handlers stay fast
 - **Testing**: Vitest for unit/integration, Playwright for e2e
 - **Validation**: Zod schemas shared between server actions/API routes and forms
+- **Observability**: structured logging + tracing (e.g. OpenTelemetry) and an
+  error tracker (e.g. Sentry) from Phase 0 — not deferred to "when we're bigger,"
+  since retrofitting tracing into background jobs and AI calls later is far more
+  work than instrumenting them as they're built (`devops-observability-expert`).
 
 ## Core domain entities
 

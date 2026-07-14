@@ -14,10 +14,11 @@ way, and `database-schema-expert` for indexing/RLS/migration conventions.
 
 ```prisma
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  defaultCurrency String   @default("USD") // ISO 4217; see i18n-currency-timezone skill
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   members   WorkspaceMember[]
   contacts  Contact[]
@@ -31,6 +32,7 @@ model WorkspaceMember {
   workspaceId String
   userId      String
   role        String   // "owner" | "admin" | "member"
+  timezone    String   @default("UTC") // IANA tz, e.g. "America/New_York" — see i18n-currency-timezone
   createdAt   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
@@ -112,6 +114,7 @@ model Deal {
   stageId          String
   companyId        String?
   amountCents      Int?
+  currency         String?   // ISO 4217; falls back to Workspace.defaultCurrency when unset
   forecastCategory String    @default("pipeline") // pipeline|best_case|commit|closed
   closedAt         DateTime?
   createdAt        DateTime  @default(now())
@@ -210,3 +213,10 @@ model FieldDefinition {
   shape is genuinely different, an optional module table). See
   `workspace-customization` for the decision process and how terminology,
   custom fields, and modules fit together end to end.
+- This file covers the core transactional entities only. Reporting read-model
+  tables, `Notification`/`NotificationPreference`, and `ApiKey`/
+  `WebhookSubscription`/`WebhookDelivery` live in their own skills
+  (`reporting-read-models`, `notifications-and-digests`,
+  `public-api-and-webhooks`) rather than here, since they're owned by different
+  agents and have different lifecycle/consistency requirements than the core
+  model — don't merge them into this file.
