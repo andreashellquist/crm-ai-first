@@ -54,6 +54,27 @@ matter more than in a typical "add a chatbot" feature.
   Company/Contact via a filtered vector or full-text search, not global semantic
   search across all workspaces (tenant isolation applies to retrieval too).
 
+## Vertical-agnostic prompts
+
+This CRM serves multiple markets through workspace settings (see
+`crm-domain-expert` and the `workspace-customization` skill), so prompts and
+tool schemas must not hardcode vocabulary:
+
+- Build the system prompt's entity vocabulary from the workspace's resolved
+  `terminology` settings (e.g. "Deal" → "Listing" for a real-estate workspace)
+  so drafts, summaries, and scoring rationale read naturally in the user's
+  language, not in generic CRM-speak.
+- Tool schemas and their `key`/`id` fields stay on the stable canonical names
+  (`dealId`, `stageId`) regardless of workspace terminology — only the
+  human-facing `label`/description text and any prose the model produces
+  should reflect the configured vocabulary. Never let a relabeled term change
+  an actual field/tool name, or workspaces will silently diverge in their tool
+  contracts.
+- When including custom-field data in a prompt (for scoring, drafting,
+  summarization), use each field's `FieldDefinition.label`, not its raw `key`,
+  so the model (and any human reviewing the output) sees a readable label
+  instead of an internal identifier.
+
 ## Cost/latency discipline
 
 Prefer Haiku for high-volume, low-stakes calls (scoring, classification, short

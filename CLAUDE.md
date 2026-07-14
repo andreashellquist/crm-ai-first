@@ -40,6 +40,31 @@ over Contact/Company/Deal), `Task`. See the `crm-domain-expert` agent and
 `crm-data-model` skill before adding or changing entities — keep the model
 consistent with those conventions rather than inventing parallel structures.
 
+## Modular by design — one schema, many markets
+
+This CRM must work for different verticals (e.g. real estate, recruiting,
+insurance, B2B SaaS sales) via per-workspace **settings**, not via forked code
+paths or vertical-specific schemas. Concretely:
+
+- **Terminology is configurable.** A workspace can relabel "Deal" as "Listing"
+  or "Company" as "Property Owner" without any schema or code change — labels
+  are resolved at render/prompt-build time from workspace settings, never
+  hardcoded as user-facing strings.
+- **Fields are extensible per workspace** via a `FieldDefinition` metadata table
+  + `customFields` JSON, not by adding vertical-specific columns to core tables.
+- **Pipelines are just data.** Vertical "starter kits" (pipeline/stage
+  templates, suggested custom fields, suggested terminology) are seeded at
+  workspace creation and become ordinary workspace data afterward — the app
+  has no runtime branching on "what vertical is this."
+- **Optional modules**, not vertical if/else. A capability that doesn't fit the
+  core model (e.g. property listings, insurance policies) ships as an optional
+  module with its own tables, toggled per workspace, never required by core
+  flows.
+
+See the `workspace-customization` skill for the concrete data shapes, and
+`crm-domain-expert` for when something belongs as a core field vs. a custom
+field vs. a module.
+
 ## Working conventions
 
 - Prefer Server Actions over API routes for internal mutations; use API routes only

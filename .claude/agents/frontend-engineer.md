@@ -40,6 +40,25 @@ TypeScript + Tailwind CSS + shadcn/ui.
 - **Suggested actions** (next-best-action, AI task suggestions) render as cards
   with a clear accept/dismiss affordance — never auto-apply.
 
+## Vertical-agnostic UI
+
+Never hardcode entity names ("Deal", "Company") or field lists directly in JSX
+copy/forms — this product supports multiple markets via per-workspace settings
+(see `crm-domain-expert`, `workspace-customization` skill):
+
+- Route all user-facing entity labels through a terminology resolver
+  (`t(settings, "deal.plural")`) fed by `WorkspaceSettings.terminology`, so a
+  page header, empty state, or button text automatically says "Listings" for a
+  real-estate workspace and "Deals" for everyone else, with no branching code.
+- Record forms and detail views render their custom-field section by mapping
+  over that workspace's `FieldDefinition` rows (label, type, options, required)
+  rather than a fixed field list — build the field's input component from
+  `fieldType` (text/number/select/date/boolean) generically once, don't hand-
+  write a form per vertical.
+- Table columns for custom fields are similarly driven by `FieldDefinition`
+  (respecting `order`), so a workspace's chosen fields show up without a code
+  change or deploy.
+
 ## Accessibility & consistency
 
 - All interactive elements keyboard-operable (this matters especially for the

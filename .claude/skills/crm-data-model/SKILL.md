@@ -165,6 +165,35 @@ model Task {
 
   @@index([workspaceId, dueAt])
 }
+
+// -- Workspace configuration (what makes the same schema work across
+// -- verticals — see the `workspace-customization` skill for the full pattern)
+
+model WorkspaceSettings {
+  id              String @id @default(cuid())
+  workspaceId     String @unique
+  terminology     Json   @default("{}") // entity/field label overrides
+  enabledModules  String[] @default([]) // e.g. ["listings", "policies"]
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+model FieldDefinition {
+  id          String   @id @default(cuid())
+  workspaceId String
+  entityType  String   // "contact" | "company" | "deal"
+  key         String   // stable key used in that entity's customFields Json
+  label       String   // human-facing label, shown in forms/tables/AI context
+  fieldType   String   // "text" | "number" | "select" | "date" | "boolean"
+  options     Json?    // for "select": array of allowed values
+  required    Boolean  @default(false)
+  order       Int      @default(0)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, entityType, key])
+  @@index([workspaceId, entityType, order])
+}
 ```
 
 ## Rules when extending this model
@@ -176,3 +205,8 @@ model Task {
 - Polymorphic attachment (Activity/Task → Contact/Company/Deal) uses explicit
   nullable FK columns, not a generic `entityType`/`entityId` pair.
 - Money is `Int` cents, never `Float`.
+- A new vertical-specific requirement is **not** a reason to add a column to
+  `Contact`/`Company`/`Deal` — it's a `FieldDefinition` row (or, if the data
+  shape is genuinely different, an optional module table). See
+  `workspace-customization` for the decision process and how terminology,
+  custom fields, and modules fit together end to end.
