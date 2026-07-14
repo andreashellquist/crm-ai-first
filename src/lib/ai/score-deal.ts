@@ -49,13 +49,22 @@ interface ScoringClient {
 async function assembleDealContext(dealId: string, workspaceId: string) {
   const deal = await db.deal.findFirst({
     where: { id: dealId, workspaceId, deletedAt: null },
-    include: { stage: true, company: true, contacts: true },
+    include: {
+      stage: true,
+      company: true,
+      contacts: true,
+      activities: { orderBy: { createdAt: "desc" }, take: 5 },
+    },
   });
   if (!deal) throw new DealNotFoundError(`Deal ${dealId} not found in workspace`);
 
   const daysInStage = Math.floor(
     (Date.now() - deal.updatedAt.getTime()) / (1000 * 60 * 60 * 24),
   );
+
+  const daysSinceLastActivity = deal.activities[0]
+    ? Math.floor((Date.now() - deal.activities[0].createdAt.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
   return {
     deal,
@@ -69,6 +78,15 @@ async function assembleDealContext(dealId: string, workspaceId: string) {
       companyName: deal.company?.name ?? null,
       contactCount: deal.contacts.length,
       contactLifecycleStages: deal.contacts.map((c) => c.lifecycleStage),
+      daysSinceLastActivity,
+      // Last few Activities, truncated — per lead-deal-scoring skill, this is
+      // what lets the rationale reference what actually happened rather than
+      // only the numeric signals.
+      recentActivities: deal.activities.map((activity) => ({
+        type: activity.type,
+        daysAgo: Math.floor((Date.now() - activity.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+        body: activity.body?.slice(0, 300) ?? null,
+      })),
     },
   };
 }

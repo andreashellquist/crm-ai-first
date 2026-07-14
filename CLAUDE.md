@@ -18,12 +18,16 @@ Phase 1 has started: a Postgres-backed job queue (`src/lib/jobs/`, run via
 `pnpm worker`) takes AI calls off the request path, and deal scoring
 (`src/lib/ai/score-deal.ts`) is the first feature routed through it — the UI
 enqueues, polls job status, and refreshes on completion rather than blocking.
+The `Activity` entity (call/email/meeting/note) is in, with a deal detail page
+(`/pipeline/[dealId]`) to log and view them — deal scoring now folds recent
+activity text into its signals, closing the gap the lead-deal-scoring skill
+originally flagged as pending.
 
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
 feature area; it says what phase the feature belongs to and which expert agent
-in `.claude/agents/` owns it. Notably not yet built: Activity/Task entities,
+in `.claude/agents/` owns it. Notably not yet built: Task entity,
 drag-and-drop on the pipeline board, drafting/summarization/next-best-action,
 an AI eval harness, real OAuth, and CI.
 

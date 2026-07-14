@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { moveDealStageAction, scoreDealAction, getJobStatusAction } from "./actions";
 import { Button } from "@/components/ui/button";
 
@@ -76,7 +77,9 @@ export function DealCard({
 
   return (
     <div className="space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
-      <div className="text-sm font-medium">{title}</div>
+      <Link href={`/pipeline/${dealId}`} className="block text-sm font-medium hover:underline">
+        {title}
+      </Link>
       {amountLabel ? <div className="text-xs text-neutral-500">{amountLabel}</div> : null}
 
       {/* AI-generated content gets a visually distinct treatment so it's never

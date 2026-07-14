@@ -98,6 +98,33 @@ async function main() {
     },
   });
 
+  const activityDefs = [
+    {
+      id: "demo-activity-1",
+      type: "call",
+      body: "Intro call with Jane. Interested in the Enterprise tier, wants a security review before signing.",
+    },
+    {
+      id: "demo-activity-2",
+      type: "email",
+      body: "Sent pricing breakdown and a comparison against their current vendor.",
+    },
+  ];
+  for (const activity of activityDefs) {
+    await db.activity.upsert({
+      where: { id: activity.id },
+      update: {},
+      create: {
+        id: activity.id,
+        workspaceId: workspace.id,
+        dealId: "demo-deal",
+        companyId: company.id,
+        type: activity.type,
+        body: activity.body,
+      },
+    });
+  }
+
   console.log(`Seeded. Sign in with ${DEV_EMAIL} / ${DEV_PASSWORD}`);
 }
 

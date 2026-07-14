@@ -72,11 +72,12 @@ model Workspace {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  members   WorkspaceMember[]
-  contacts  Contact[]
-  companies Company[]
-  deals     Deal[]
-  pipelines Pipeline[]
+  members    WorkspaceMember[]
+  contacts   Contact[]
+  companies  Company[]
+  deals      Deal[]
+  pipelines  Pipeline[]
+  activities Activity[]
 }
 
 model WorkspaceMember {
@@ -107,9 +108,10 @@ model Contact {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  company   Company?  @relation(fields: [companyId], references: [id])
-  deals     Deal[]
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  company    Company?   @relation(fields: [companyId], references: [id])
+  deals      Deal[]
+  activities Activity[]
 
   @@index([workspaceId, companyId])
   @@index([workspaceId, email])
@@ -125,9 +127,10 @@ model Company {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contacts  Contact[]
-  deals     Deal[]
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contacts   Contact[]
+  deals      Deal[]
+  activities Activity[]
 
   @@index([workspaceId, name])
 }
@@ -179,14 +182,34 @@ model Deal {
   aiScoreSignals   Json?
   aiScoredAt       DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  pipeline  Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  stage     Stage     @relation(fields: [stageId], references: [id])
-  company   Company?  @relation(fields: [companyId], references: [id])
-  contacts  Contact[]
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pipeline   Pipeline   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  stage      Stage      @relation(fields: [stageId], references: [id])
+  company    Company?   @relation(fields: [companyId], references: [id])
+  contacts   Contact[]
+  activities Activity[]
 
   @@index([workspaceId, stageId])
   @@index([workspaceId, pipelineId])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        String // call | email | meeting | note
+  body        String?
+  contactId   String?
+  companyId   String?
+  dealId      String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact   Contact?  @relation(fields: [contactId], references: [id])
+  company   Company?  @relation(fields: [companyId], references: [id])
+  deal      Deal?     @relation(fields: [dealId], references: [id])
+
+  @@index([workspaceId, dealId, createdAt])
+  @@index([workspaceId, contactId, createdAt])
 }
 
 // -- Background jobs (backend-api-engineer: anything that calls an LLM or a
