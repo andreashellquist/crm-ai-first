@@ -14,13 +14,18 @@ WorkspaceMember, Contact, Company, Pipeline, Stage, Deal), a contacts list +
 create form, and a pipeline Kanban board with a working (non-drag, accessible)
 stage-move control. Run it via the README's "Getting started" section.
 
+Phase 1 has started: a Postgres-backed job queue (`src/lib/jobs/`, run via
+`pnpm worker`) takes AI calls off the request path, and deal scoring
+(`src/lib/ai/score-deal.ts`) is the first feature routed through it — the UI
+enqueues, polls job status, and refreshes on completion rather than blocking.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
 feature area; it says what phase the feature belongs to and which expert agent
 in `.claude/agents/` owns it. Notably not yet built: Activity/Task entities,
-drag-and-drop on the pipeline board, background jobs, any AI feature, tests,
-and CI.
+drag-and-drop on the pipeline board, drafting/summarization/next-best-action,
+an AI eval harness, real OAuth, and CI.
 
 ## Chosen stack
 

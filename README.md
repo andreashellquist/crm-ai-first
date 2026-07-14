@@ -30,3 +30,18 @@ pnpm dev
 ```
 
 Then open http://localhost:3000 and sign in with the seeded demo credentials.
+
+AI features (e.g. deal scoring) run through a Postgres-backed job queue, not
+inline in the request — run the worker alongside the app to process them:
+
+```bash
+pnpm worker
+```
+
+Set `ANTHROPIC_API_KEY` in `.env` for scoring to actually succeed; without it,
+jobs retry with backoff and then fail visibly in the UI, which is itself a
+tested path (see `src/lib/ai/score-deal.ts`). `pnpm worker` is a persistent
+loop for local dev / a dedicated process — it does not run on Vercel's
+serverless functions. A production deployment there needs a Vercel
+Cron-triggered API route calling `processPendingJobs()` once per invocation
+instead (see `src/lib/jobs/worker.ts`).

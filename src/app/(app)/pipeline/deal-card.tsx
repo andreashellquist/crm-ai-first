@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { moveDealStageAction, scoreDealAction } from "./actions";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { moveDealStageAction, scoreDealAction, getJobStatusAction } from "./actions";
 import { Button } from "@/components/ui/button";
 
 type Stage = { id: string; name: string };
+
+const POLL_INTERVAL_MS = 1200;
+const MAX_POLLS = 25; // ~30s before giving up and telling the user to check back
 
 export function DealCard({
   dealId,
@@ -23,16 +27,51 @@ export function DealCard({
   aiScore: number | null;
   aiScoreRationale: string | null;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [scoring, setScoring] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
+  const stopPolling = useRef(false);
+
+  useEffect(() => () => {
+    stopPolling.current = true;
+  }, []);
 
   async function handleScore() {
     setScoring(true);
     setScoreError(null);
-    const result = await scoreDealAction(dealId);
-    setScoring(false);
-    if (result.error) setScoreError(result.error);
+    stopPolling.current = false;
+
+    let jobId: string;
+    try {
+      ({ jobId } = await scoreDealAction(dealId));
+    } catch {
+      setScoring(false);
+      setScoreError("Could not queue scoring — try again.");
+      return;
+    }
+
+    for (let attempt = 0; attempt < MAX_POLLS && !stopPolling.current; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      const result = await getJobStatusAction(jobId);
+
+      if (result.status === "succeeded") {
+        setScoring(false);
+        router.refresh(); // re-fetches the server component tree with the new score
+        return;
+      }
+      if (result.status === "failed") {
+        setScoring(false);
+        setScoreError(result.lastError ?? "Deal scoring is temporarily unavailable");
+        return;
+      }
+      // "pending" / "processing" / "not_found" (job not yet visible) — keep polling
+    }
+
+    if (!stopPolling.current) {
+      setScoring(false);
+      setScoreError("Still working — check back in a moment.");
+    }
   }
 
   return (

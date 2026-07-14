@@ -188,3 +188,24 @@ model Deal {
   @@index([workspaceId, stageId])
   @@index([workspaceId, pipelineId])
 }
+
+// -- Background jobs (backend-api-engineer: anything that calls an LLM or a
+// -- third-party API runs here, off the request path, not inline)
+
+model Job {
+  id          String    @id @default(cuid())
+  workspaceId String? // nullable: not every job type is workspace-scoped
+  type        String // e.g. "score_deal"
+  payload     Json
+  status      String    @default("pending") // pending | processing | succeeded | failed
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  runAt       DateTime  @default(now()) // supports backoff on retry
+  lockedAt    DateTime?
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+  @@index([workspaceId, status])
+}
