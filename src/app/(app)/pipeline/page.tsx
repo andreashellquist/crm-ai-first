@@ -66,6 +66,8 @@ export default async function PipelinePage() {
                     amountLabel={formatAmount(deal.amountCents, deal.currency)}
                     stages={allStages}
                     currentStageId={stage.id}
+                    aiScore={deal.aiScore}
+                    aiScoreRationale={deal.aiScoreRationale}
                   />
                 ))}
                 {stage.deals.length === 0 ? (

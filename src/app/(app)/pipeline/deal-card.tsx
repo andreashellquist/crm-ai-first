@@ -1,7 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
-import { moveDealStageAction } from "./actions";
+import { useState, useTransition } from "react";
+import { moveDealStageAction, scoreDealAction } from "./actions";
+import { Button } from "@/components/ui/button";
 
 type Stage = { id: string; name: string };
 
@@ -11,19 +12,46 @@ export function DealCard({
   amountLabel,
   stages,
   currentStageId,
+  aiScore,
+  aiScoreRationale,
 }: {
   dealId: string;
   title: string;
   amountLabel: string | null;
   stages: Stage[];
   currentStageId: string;
+  aiScore: number | null;
+  aiScoreRationale: string | null;
 }) {
   const [pending, startTransition] = useTransition();
+  const [scoring, setScoring] = useState(false);
+  const [scoreError, setScoreError] = useState<string | null>(null);
+
+  async function handleScore() {
+    setScoring(true);
+    setScoreError(null);
+    const result = await scoreDealAction(dealId);
+    setScoring(false);
+    if (result.error) setScoreError(result.error);
+  }
 
   return (
     <div className="space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
       <div className="text-sm font-medium">{title}</div>
       {amountLabel ? <div className="text-xs text-neutral-500">{amountLabel}</div> : null}
+
+      {/* AI-generated content gets a visually distinct treatment so it's never
+          confused with human-entered data (frontend-engineer / ai-features-architect). */}
+      {aiScore != null ? (
+        <div className="rounded border border-indigo-200 bg-indigo-50 p-2 text-xs">
+          <div className="flex items-center gap-1 font-medium text-indigo-700">
+            <span aria-hidden>✦</span> AI score: {aiScore}/100
+          </div>
+          {aiScoreRationale ? <p className="mt-1 text-indigo-900">{aiScoreRationale}</p> : null}
+        </div>
+      ) : null}
+      {scoreError ? <p className="text-xs text-red-600">{scoreError}</p> : null}
+
       {/* Explicit "move to stage" control rather than drag-and-drop for this
           walking skeleton — keeps stage changes keyboard/screen-reader
           operable by default (pipeline-kanban-board skill's accessibility
@@ -49,6 +77,17 @@ export function DealCard({
           ))}
         </select>
       </label>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        disabled={scoring}
+        onClick={handleScore}
+      >
+        {scoring ? "Scoring…" : aiScore != null ? "Re-score with AI" : "Score with AI"}
+      </Button>
     </div>
   );
 }

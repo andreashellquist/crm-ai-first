@@ -172,6 +172,13 @@ model Deal {
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
+  // AI deal scoring (ai-features-architect / lead-deal-scoring skill) — cached
+  // so the UI has something to show instantly; recomputed on demand for now.
+  aiScore          Int?
+  aiScoreRationale String?
+  aiScoreSignals   Json?
+  aiScoredAt       DateTime?
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   pipeline  Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   stage     Stage     @relation(fields: [stageId], references: [id])

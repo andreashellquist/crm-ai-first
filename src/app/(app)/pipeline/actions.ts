@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
+import { scoreDeal, DealNotFoundError, ScoringFailedError } from "@/lib/ai/score-deal";
 
 const moveDealSchema = z.object({
   dealId: z.string(),
@@ -24,4 +25,19 @@ export async function moveDealStageAction(input: { dealId: string; stageId: stri
 
   await db.deal.update({ where: { id: deal.id }, data: { stageId: stage.id } });
   revalidatePath("/pipeline");
+}
+
+export type ScoreDealState = { error?: string };
+
+export async function scoreDealAction(dealId: string): Promise<ScoreDealState> {
+  const { workspaceId } = await requireWorkspace();
+  try {
+    await scoreDeal(dealId, workspaceId);
+  } catch (err) {
+    if (err instanceof DealNotFoundError) return { error: "Deal not found" };
+    if (err instanceof ScoringFailedError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath("/pipeline");
+  return {};
 }
