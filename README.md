@@ -13,35 +13,56 @@ the domain and technical experts available in Claude Code.
 ## Status
 
 Phase 0 walking skeleton: sign in → create a contact → see/move a deal on the
-pipeline board, backed by Postgres/Prisma. Auth is a dev-only email+password
-Credentials login for now — see `auth-security-expert` for adding real OAuth
-providers. Most of Phase 0-4 in `docs/PRODUCT_SCOPE.md` is still ahead.
+pipeline board, backed by a split Next.js frontend / ASP.NET Core backend (see
+`CLAUDE.md`'s "Chosen stack"). Phase 1 has started: a Postgres-backed job queue
+takes deal scoring (the first AI feature) off the request path. Auth is a
+dev-only email+password login for now — see `auth-security-expert` for adding
+real OAuth providers. Most of Phase 0-4 in `docs/PRODUCT_SCOPE.md` is still
+ahead.
 
 ## Getting started
 
-Requires Node 22+, pnpm, and a local PostgreSQL 16 server.
+Requires Node 22+, pnpm, .NET 10 SDK, and a local PostgreSQL 16 server.
 
 ```bash
-cp .env.example .env   # adjust DATABASE_URL if needed
+cp .env.example .env   # adjust API_BASE_URL if needed
+
+# Backend
+cd backend/CrmApi
+dotnet run seed         # applies EF Core migrations + creates a demo
+                         # workspace + demo@example.com / password123
+dotnet run               # serves the API on http://localhost:5194
+
+# Frontend (separate terminal, repo root)
 pnpm install
-pnpm db:migrate         # applies prisma/migrations
-pnpm db:seed             # creates a demo workspace + demo@example.com / password123
 pnpm dev
 ```
 
 Then open http://localhost:3000 and sign in with the seeded demo credentials.
 
 AI features (e.g. deal scoring) run through a Postgres-backed job queue, not
-inline in the request — run the worker alongside the app to process them:
+inline in the request — `backend/CrmApi/Services/JobWorker.cs` runs in-process
+as an ASP.NET Core `BackgroundService`, so it's already polling as soon as the
+API is running; there's no separate worker process to start locally. Set
+`Anthropic:ApiKey` in `backend/CrmApi/appsettings.Development.json` for scoring
+to actually succeed; without it, jobs retry with backoff and then fail visibly
+in the UI, which is itself a tested path (see
+`backend/CrmApi.Tests/DealScoringServiceTests.cs`). This persistent-loop shape
+doesn't fit a serverless deployment target for the *API* itself — see
+CLAUDE.md's "Background work" note.
+
+## Testing
 
 ```bash
-pnpm worker
+# Backend — requires a running Postgres reachable via the connection string
+# in backend/CrmApi/appsettings.Test.json (or override with TEST_DATABASE_URL)
+cd backend && dotnet test CrmApi.slnx
+
+# Frontend
+pnpm lint
+npx tsc --noEmit
 ```
 
-Set `ANTHROPIC_API_KEY` in `.env` for scoring to actually succeed; without it,
-jobs retry with backoff and then fail visibly in the UI, which is itself a
-tested path (see `src/lib/ai/score-deal.ts`). `pnpm worker` is a persistent
-loop for local dev / a dedicated process — it does not run on Vercel's
-serverless functions. A production deployment there needs a Vercel
-Cron-triggered API route calling `processPendingJobs()` once per invocation
-instead (see `src/lib/jobs/worker.ts`).
+CI (`.github/workflows/ci.yml`) runs both on every push/PR against a Postgres
+service container — see `qa-test-engineer` for the test project's structure
+and conventions.

@@ -21,12 +21,20 @@ completion rather than blocking. The `Activity` entity (call/email/meeting/note)
 in, with a deal detail page to log and view them — deal scoring folds recent
 activity text into its signals.
 
+An xUnit test suite (`backend/CrmApi.Tests`) covers the backend — integration
+tests against a real test Postgres database via `WebApplicationFactory<Program>`,
+a fake `IAnthropicMessagesClient` for deterministic AI-call tests, and
+multi-tenant isolation tests as the highest-priority category (see
+`qa-test-engineer`). CI (`.github/workflows/ci.yml`) runs it, plus frontend
+lint/typecheck/build, on every push/PR.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional bar,
 phased roadmap, and the explicit assumptions made to resolve an intentionally vague
 brief — is still ahead. Read it before starting a new feature area; it says what
 phase the feature belongs to and which expert agent in `.claude/agents/` owns it.
 Notably not yet built: Task entity, drag-and-drop on the pipeline board,
-drafting/summarization/next-best-action, an AI eval harness, real OAuth, and CI.
+drafting/summarization/next-best-action, an AI eval harness, real OAuth, and
+Playwright e2e in CI (it runs manually for now — see `qa-test-engineer`).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
@@ -87,9 +95,13 @@ requirements turn out to need something these don't fit.
   this persistent-loop shape does not fit a serverless deployment target for the
   *API* itself (unlikely here, since ASP.NET Core is typically deployed as a
   long-running process, but worth remembering if that ever changes).
-- **Testing**: xUnit for the .NET backend (not yet set up — the TypeScript Vitest
-  suite that covered deal scoring was removed with the code it tested and needs a
-  .NET equivalent), Playwright for e2e against the frontend.
+- **Testing**: xUnit for the .NET backend (`backend/CrmApi.Tests` — integration
+  tests via `WebApplicationFactory<Program>` against a real test Postgres
+  database, a fake `IAnthropicMessagesClient` for AI-call tests, multi-tenant
+  isolation as the highest-priority category), Playwright for e2e against the
+  frontend (not yet wired into CI — see `qa-test-engineer`). CI
+  (`.github/workflows/ci.yml`) runs the xUnit suite plus frontend
+  lint/typecheck/build on every push/PR.
 - **Validation**: model validation in ASP.NET Core controllers (`ModelState`,
   manual checks) rather than a shared client/server schema library — the frontend
   no longer duplicates validation logic; it forwards requests and surfaces the

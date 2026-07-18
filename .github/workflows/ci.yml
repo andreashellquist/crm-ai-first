@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      - run: npx tsc --noEmit
+
+      # Uses the checked-in backend/openapi.json + src/lib/api/schema.d.ts —
+      # this job doesn't run the .NET backend. Regenerating and committing
+      # both together is a manual step whenever the API contract changes
+      # (see CLAUDE.md's "Working conventions"); this build step is what
+      # would fail if someone forgot.
+      - run: pnpm build
+        env:
+          API_BASE_URL: http://localhost:5194
+
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+          POSTGRES_DB: crm_dotnet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet restore backend/CrmApi.slnx
+
+      - run: dotnet build backend/CrmApi.slnx --no-restore --configuration Release
+
+      # CrmApiFactory applies EF Core migrations itself on startup
+      # (IAsyncLifetime.InitializeAsync) — no separate `dotnet ef database
+      # update` step needed. TEST_DATABASE_URL matches the postgres service
+      # above; see backend/CrmApi.Tests/CrmApiFactory.cs.
+      - run: dotnet test backend/CrmApi.slnx --no-build --configuration Release
+        env:
+          TEST_DATABASE_URL: "Host=localhost;Port=5432;Database=crm_dotnet_test;Username=crm;Password=crm"

@@ -18,6 +18,7 @@ builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<JobQueueService>();
 builder.Services.AddScoped<DealScoringService>();
+builder.Services.AddSingleton<IAnthropicMessagesClient, AnthropicMessagesClient>();
 builder.Services.AddHostedService<JobWorker>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -60,3 +61,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Exposes the top-level Program for WebApplicationFactory<Program> in CrmApi.Tests.
+public partial class Program { }

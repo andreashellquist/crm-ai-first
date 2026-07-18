@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Anthropic;
 using Anthropic.Models.Messages;
 using CrmApi.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +13,9 @@ public record ScoreResult(int Score, string Rationale, List<string> Signals);
 
 // Structured tool-output contract — never parse a bare score out of prose.
 // See .claude/skills/lead-deal-scoring and ai-tool-calling-pattern.
-public class DealScoringService(AppDbContext db, IConfiguration config, ILogger<DealScoringService> logger)
+// `anthropic` is injected as IAnthropicMessagesClient so tests can supply a
+// fake — see CrmApi.Tests/Fakes/FakeAnthropicMessagesClient.cs.
+public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthropic, ILogger<DealScoringService> logger)
 {
     // Default per the claude-api skill. The lead-deal-scoring skill argues
     // Haiku is normally sufficient for this specific high-volume, low-stakes
@@ -54,9 +55,6 @@ public class DealScoringService(AppDbContext db, IConfiguration config, ILogger<
             }).ToList(),
         };
 
-        var apiKey = config["Anthropic:ApiKey"];
-        AnthropicClient client = string.IsNullOrWhiteSpace(apiKey) ? new() : new() { ApiKey = apiKey };
-
         var scoreTool = new Tool
         {
             Name = "record_deal_score",
@@ -83,7 +81,7 @@ public class DealScoringService(AppDbContext db, IConfiguration config, ILogger<
         Message response;
         try
         {
-            response = await client.Messages.Create(new MessageCreateParams
+            response = await anthropic.Create(new MessageCreateParams
             {
                 Model = ModelId,
                 MaxTokens = 1024,
