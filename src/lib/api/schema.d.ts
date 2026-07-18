@@ -4,6 +4,39 @@
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -249,6 +282,92 @@ export interface paths {
                         "text/plain": components["schemas"]["ContactDto"];
                         "application/json": components["schemas"]["ContactDto"];
                         "text/json": components["schemas"]["ContactDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CsvImportPreviewRequest"];
+                    "text/json": components["schemas"]["CsvImportPreviewRequest"];
+                    "application/*+json": components["schemas"]["CsvImportPreviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CsvImportPreviewResponse"];
+                        "application/json": components["schemas"]["CsvImportPreviewResponse"];
+                        "text/json": components["schemas"]["CsvImportPreviewResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CsvImportRequest"];
+                    "text/json": components["schemas"]["CsvImportRequest"];
+                    "application/*+json": components["schemas"]["CsvImportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CsvImportResponse"];
+                        "application/json": components["schemas"]["CsvImportResponse"];
+                        "text/json": components["schemas"]["CsvImportResponse"];
                     };
                 };
             };
@@ -1024,6 +1143,26 @@ export interface components {
             contactId: null | string;
             companyId: null | string;
             dealId: null | string;
+        };
+        CsvImportPreviewRequest: {
+            csvContent: string;
+        };
+        CsvImportPreviewResponse: {
+            headers: string[];
+            previewRows: {
+                [key: string]: string;
+            }[];
+            /** Format: int32 */
+            totalRows: number | string;
+        };
+        CsvImportRequest: {
+            csvContent: string;
+            columnMapping: {
+                [key: string]: string;
+            };
+        };
+        CsvImportResponse: {
+            jobId: string;
         };
         DealCardDto: {
             id: string;

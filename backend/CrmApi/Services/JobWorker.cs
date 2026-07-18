@@ -11,6 +11,7 @@ record ScoreDealPayload(string DealId, string WorkspaceId);
 record DraftEmailPayload(string DealId, string WorkspaceId, string? Instruction);
 record SummarizeDealPayload(string DealId, string WorkspaceId);
 record NextBestActionPayload(string DealId, string WorkspaceId);
+record ImportContactsPayload(string CsvContent, Dictionary<string, string> ColumnMapping, string WorkspaceId);
 
 // Runs in-process as a hosted service for local dev / a dedicated deployment.
 // ProcessBatchAsync is deliberately the unit both this loop and a future
@@ -69,6 +70,14 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
             var payload = JsonSerializer.Deserialize<NextBestActionPayload>(job.Payload, PayloadOptions)
                 ?? throw new InvalidOperationException("Invalid next_best_action payload");
             var result = await nextBestAction.SuggestActions(payload.DealId, payload.WorkspaceId);
+            return JsonSerializer.Serialize(result, ResultOptions);
+        },
+        ["import_contacts"] = async (services, job) =>
+        {
+            var import = services.GetRequiredService<ContactImportService>();
+            var payload = JsonSerializer.Deserialize<ImportContactsPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid import_contacts payload");
+            var result = await import.Import(payload.CsvContent, payload.ColumnMapping, payload.WorkspaceId);
             return JsonSerializer.Serialize(result, ResultOptions);
         },
     };

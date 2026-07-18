@@ -175,4 +175,30 @@ public class JobQueueIntegrationTests(CrmApiFactory factory) : IntegrationTestBa
             Anthropic.NextResponse = null;
         }
     }
+
+    [Fact]
+    public async Task ImportContactsJob_OnSuccess_PersistsResultOnJob()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var csv = "Email,First,Last\njane@acme.com,Jane,Doe";
+        var mapping = new Dictionary<string, string> { ["email"] = "Email", ["firstName"] = "First", ["lastName"] = "Last" };
+
+        var importResponse = await ws.Client.PostAsJsonAsync("/api/contacts/import", new CsvImportRequest(csv, mapping));
+        importResponse.EnsureSuccessStatusCode();
+        var enqueued = await importResponse.Content.ReadFromJsonAsync<CsvImportResponse>();
+        Assert.NotNull(enqueued);
+
+        await ProcessAllPendingJobsAsync();
+
+        var statusResponse = await ws.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+        Assert.NotNull(statusResponse);
+        Assert.Equal("succeeded", statusResponse!.Status);
+        Assert.NotNull(statusResponse.Result);
+        // getImportJobStatusAction parses this as { created, updated, skipped,
+        // errors } — a case-sensitive check that the payload is camelCase.
+        Assert.Contains("\"created\":1", statusResponse.Result);
+
+        var persisted = await WithDb(db => db.Contacts.SingleAsync(c => c.WorkspaceId == ws.Workspace.Id && c.Email == "jane@acme.com"));
+        Assert.Equal("Jane", persisted.FirstName);
+    }
 }

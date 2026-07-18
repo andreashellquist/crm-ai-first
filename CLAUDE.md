@@ -89,6 +89,18 @@ three jobs, all blocking — see `qa-test-engineer`):
   which now also applies migrations, making it a self-sufficient bootstrap for
   a fresh database).
 
+Phase 2 ("Connected & informed") has started: CSV contact import with dedup
+(`ContactImportService`) is in, per the `csv-import-dedupe` skill — parse and
+preview a CSV synchronously (fast enough not to need the job queue), let the
+user map columns (with best-effort auto-detection off common header names),
+then run the actual import as a background job (`import_contacts`) so a
+large file can't block the request or the UI. Matching priority: exact email
+match, then company + exact name match, then company-domain match for
+resolving/creating the `Company` a `Contact` attaches to; a match only fills
+in currently-blank fields, never overwrites. v1-scoped to the fixed Contact
+fields (email/firstName/lastName/phone/companyName/companyDomain) — custom-
+field mapping is a deliberate follow-up, not a hidden gap.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -96,18 +108,20 @@ feature area; it says what phase the feature belongs to and which expert
 agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
-any actual email/calendar send capability, RAG over CRM history, and
-enterprise auth (SSO/SAML/SCIM).
+any actual email/calendar send capability, RAG over CRM history, enterprise
+auth (SSO/SAML/SCIM), and the rest of Phase 2 (email/calendar sync with
+consent/suppression gating, notifications, search/saved views, billing).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
 below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
 `backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
-`devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`, and
-`workspace-customization` have been updated for the new stack. Skills further
-from the migration's blast radius (`csv-import-dedupe`, `pipeline-kanban-board`,
-`reporting-read-models`, `public-api-and-webhooks`, `notifications-and-digests`,
-`i18n-currency-timezone`, `communication-consent-and-suppression`) still show
+`devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`,
+`workspace-customization`, and `csv-import-dedupe` have been updated for the
+new stack. Skills further from the migration's blast radius
+(`pipeline-kanban-board`, `reporting-read-models`, `public-api-and-webhooks`,
+`notifications-and-digests`, `i18n-currency-timezone`,
+`communication-consent-and-suppression`) still show
 Prisma/TypeScript-flavored schema snippets and code examples — the *patterns
 and conventions* in them (multi-tenancy, soft deletes, tool-calling
 discipline, etc.) still apply, but any literal code needs translating to EF

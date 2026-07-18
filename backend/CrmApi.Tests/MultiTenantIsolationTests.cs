@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using CrmApi.Dtos;
+using Microsoft.EntityFrameworkCore;
 
 namespace CrmApi.Tests;
 
@@ -192,6 +193,34 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
 
         var response = await intruder.Client.PostAsync($"/api/deals/{deal.Id}/next-best-action", content: null);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ContactImport_NeverMatchesAnotherWorkspacesContactByEmail()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+
+        var ownerContact = TestData.Contact(owner.Workspace, "OwnerName");
+        ownerContact.Email = "shared@example.com";
+        await WithDb(async db => { db.Contacts.Add(ownerContact); await db.SaveChangesAsync(); });
+
+        var csv = "Email,First,Last\nshared@example.com,IntruderName,Doe";
+        var mapping = new Dictionary<string, string> { ["email"] = "Email", ["firstName"] = "First", ["lastName"] = "Last" };
+        var importResponse = await intruder.Client.PostAsJsonAsync("/api/contacts/import", new CsvImportRequest(csv, mapping));
+        importResponse.EnsureSuccessStatusCode();
+        var enqueued = await importResponse.Content.ReadFromJsonAsync<CsvImportResponse>();
+        await ProcessAllPendingJobsAsync();
+
+        var statusResponse = await intruder.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+        Assert.Equal("succeeded", statusResponse!.Status);
+        Assert.Contains("\"created\":1", statusResponse.Result); // created a new contact, did not match/update the owner's
+
+        var ownerContactAfter = await WithDb(db => db.Contacts.SingleAsync(c => c.Id == ownerContact.Id));
+        Assert.Equal("OwnerName", ownerContactAfter.FirstName); // untouched by the intruder's import
+
+        var intruderContacts = await WithDb(db => db.Contacts.Where(c => c.WorkspaceId == intruder.Workspace.Id && c.Email == "shared@example.com").ToListAsync());
+        Assert.Single(intruderContacts);
     }
 
     [Fact]

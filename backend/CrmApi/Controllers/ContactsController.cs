@@ -77,4 +77,34 @@ public class ContactsController(AppDbContext db, CurrentUser current) : Controll
     private static ContactDto ToDto(Contact c) => new(
         c.Id, c.FirstName, c.LastName, c.Email, c.Company?.Name, c.LifecycleStage,
         JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(c.CustomFields) ?? []);
+
+    // Synchronous — parsing headers + a 10-row preview is fast, and the
+    // frontend needs it immediately to build the column-mapping UI (no
+    // job/poll round trip for this step). See the csv-import-dedupe skill.
+    [HttpPost("import/preview")]
+    public ActionResult<CsvImportPreviewResponse> ImportPreview(CsvImportPreviewRequest request, [FromServices] ContactImportService importService)
+    {
+        try
+        {
+            return Ok(importService.Preview(request.CsvContent));
+        }
+        catch (ImportFailedException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    // The actual import runs as a background job (per backend-api-engineer:
+    // "anything that isn't a fast single-record write goes through the job
+    // queue") — a real CSV of any size will exceed a request timeout, and the
+    // UI shows progress via polling rather than blocking.
+    [HttpPost("import")]
+    public async Task<ActionResult<CsvImportResponse>> Import(CsvImportRequest request, [FromServices] JobQueueService queue)
+    {
+        var jobId = await queue.Enqueue(
+            "import_contacts",
+            new { csvContent = request.CsvContent, columnMapping = request.ColumnMapping, workspaceId = current.WorkspaceId },
+            current.WorkspaceId);
+        return Ok(new CsvImportResponse(jobId));
+    }
 }

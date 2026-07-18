@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
 import { NewContactForm } from "./new-contact-form";
 
@@ -8,9 +9,14 @@ export default async function ContactsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Contacts</h1>
-        <p className="text-sm text-neutral-500">{contacts.length} total</p>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Contacts</h1>
+          <p className="text-sm text-neutral-500">{contacts.length} total</p>
+        </div>
+        <Link href="/contacts/import" className="text-sm text-neutral-600 underline hover:text-neutral-950">
+          Import CSV
+        </Link>
       </div>
 
       <NewContactForm />
