@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Anthropic.Models.Messages;
 using CrmApi.Data;
+using CrmApi.Observability;
 using Microsoft.EntityFrameworkCore;
 
 namespace CrmApi.Services;
@@ -25,13 +27,36 @@ public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthro
 
     public async Task<ScoreResult> ScoreDeal(string dealId, string workspaceId)
     {
+        // AI-call telemetry per observability-and-slo: "which feature
+        // triggered it, latency, tokens, outcome" — the span carries the
+        // trace, the log lines below carry the structured fields.
+        using var activity = CrmApiActivitySource.Instance.StartActivity("ai.deal_scoring");
+        activity?.SetTag("ai.model", ModelId);
+        activity?.SetTag("workspace_id", workspaceId);
+        activity?.SetTag("deal_id", dealId);
+
         var deal = await db.Deals
             .Include(d => d.Stage)
             .Include(d => d.Company)
             .Include(d => d.Contacts)
             .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt).Take(5))
             .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == workspaceId && d.DeletedAt == null);
-        if (deal is null) throw new DealNotFoundException($"Deal {dealId} not found in workspace");
+        if (deal is null)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, "deal not found");
+            throw new DealNotFoundException($"Deal {dealId} not found in workspace");
+        }
+
+        // Vertical-agnostic prompts (ai-features-architect): resolve this
+        // workspace's terminology for prose the model reads/produces. Tool
+        // schema keys (companyName, stageName, ...) below stay canonical
+        // regardless — only the system/user prompt text changes per workspace.
+        var terminologyJson = (await db.WorkspaceSettings
+            .Where(s => s.WorkspaceId == workspaceId)
+            .Select(s => s.Terminology)
+            .FirstOrDefaultAsync());
+        var dealTerm = TerminologyResolver.Resolve(terminologyJson, "deal", "deal");
+        var dealTermPlural = TerminologyResolver.Resolve(terminologyJson, "deal", "deals", plural: true);
 
         var daysInStage = (int)(DateTime.UtcNow - deal.UpdatedAt).TotalDays;
         var signalContext = new
@@ -59,7 +84,7 @@ public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthro
         {
             Name = "record_deal_score",
             Description =
-                "Record the computed 0-100 score for this deal, a short rationale a sales rep would find useful, and the signals that drove the score.",
+                $"Record the computed 0-100 score for this {dealTerm}, a short rationale a sales rep would find useful, and the signals that drove the score.",
             InputSchema = new()
             {
                 Properties = new Dictionary<string, JsonElement>
@@ -85,16 +110,17 @@ public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthro
             {
                 Model = ModelId,
                 MaxTokens = 1024,
-                System = "You score B2B sales deals 0-100 for how likely they are to close, based only on the structured signals provided. " +
+                System = $"You score B2B sales {dealTermPlural} 0-100 for how likely they are to close, based only on the structured signals provided. " +
                          "0 means very unlikely to close soon; 100 means essentially certain. Always call record_deal_score.",
                 Tools = [scoreTool],
                 ToolChoice = new ToolChoiceTool { Name = "record_deal_score" },
-                Messages = [new() { Role = Role.User, Content = $"Score this deal based on these signals:\n{JsonSerializer.Serialize(signalContext)}" }],
+                Messages = [new() { Role = Role.User, Content = $"Score this {dealTerm} based on these signals:\n{JsonSerializer.Serialize(signalContext)}" }],
             });
         }
         catch (Exception ex)
         {
             // AI-call telemetry per observability-and-slo skill — outcome: error.
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             logger.LogError(ex, "ai_call deal_scoring error dealId={DealId} workspaceId={WorkspaceId}", dealId, workspaceId);
             throw new ScoringFailedException("Deal scoring is temporarily unavailable");
         }
@@ -102,6 +128,7 @@ public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthro
         var toolUse = response.Content.Select(b => b.Value).OfType<ToolUseBlock>().FirstOrDefault();
         if (toolUse is null)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "no tool_use block");
             logger.LogWarning("ai_call deal_scoring invalid_tool_output dealId={DealId}", dealId);
             throw new ScoringFailedException("Model did not return a valid score");
         }
@@ -118,6 +145,7 @@ public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthro
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             logger.LogWarning(ex, "ai_call deal_scoring invalid_tool_output dealId={DealId}", dealId);
             throw new ScoringFailedException("Model did not return a valid score");
         }
@@ -128,6 +156,9 @@ public class DealScoringService(AppDbContext db, IAnthropicMessagesClient anthro
         deal.AiScoredAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        activity?.SetTag("ai.input_tokens", response.Usage.InputTokens);
+        activity?.SetTag("ai.output_tokens", response.Usage.OutputTokens);
         logger.LogInformation(
             "ai_call deal_scoring succeeded dealId={DealId} workspaceId={WorkspaceId} latencyMs={LatencyMs} inputTokens={InputTokens} outputTokens={OutputTokens}",
             dealId, workspaceId, (DateTime.UtcNow - startedAt).TotalMilliseconds, response.Usage.InputTokens, response.Usage.OutputTokens);

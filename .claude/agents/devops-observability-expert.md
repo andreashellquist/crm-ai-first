@@ -18,27 +18,52 @@ availability/latency/durability targets this agent is accountable for.
   schema isolation or a seeded snapshot — never point a preview at production
   data.
 - Every deploy to production runs the full test suite (`qa-test-engineer`'s
-  unit/integration gate) and applies pending Prisma migrations as a distinct,
-  observable step before the new app version receives traffic — a failed
-  migration must block the deploy, not partially apply.
+  unit/integration gate) and applies pending EF Core migrations
+  (`dotnet ef database update`) as a distinct, observable step before the new
+  app version receives traffic — a failed migration must block the deploy,
+  not partially apply.
 - Config/secrets are environment variables injected by the platform, never
   committed; document *which* secrets exist and their purpose in a checked-in
   `.env.example`, never their values.
 
 ## Observability
 
+Baseline is built (`backend/CrmApi/Program.cs`, `Observability/CrmApiActivitySource.cs`):
+
 - **Structured logging**: every log line includes `workspaceId` (when
   applicable), a request/trace ID, and enough context to debug without
   re-running the request — but never full PII (per `auth-security-expert`).
-- **Tracing**: end-to-end request tracing (e.g. OpenTelemetry) covering
-  Server Actions, background jobs, and outbound calls (DB, Claude API,
-  third-party integrations) — an AI-drafting request's trace should show exactly
-  where the time went (retrieval, prompt build, model latency, DB write).
-- **Error tracking**: every unhandled exception and every explicit
-  "unexpected failure" (per `backend-api-engineer`'s expected-vs-unexpected
-  error distinction) reports to an error tracker with enough context to
-  reproduce, grouped sensibly so one root cause doesn't page as 500 different
-  alerts.
+  JSON console logs (`builder.Logging.AddJsonConsole`) in Production,
+  human-readable simple console in dev/test; a small request-scope middleware
+  (after `UseAuthentication`, before `UseAuthorization`) pushes
+  `WorkspaceId`/`TraceId` via `logger.BeginScope`, and `JobWorker` does the
+  same per job (`WorkspaceId`/`JobId`/`TraceId`) since a background job has no
+  inbound request to inherit scope from. **Gotcha**: `IncludeScopes` defaults
+  to `false` on both console formatters — without it explicitly set to `true`,
+  the scope data is tracked but never printed.
+- **Tracing**: OpenTelemetry, ASP.NET Core + `HttpClient` auto-instrumentation
+  plus Npgsql's own built-in `ActivitySource` (subscribed via
+  `.AddSource("Npgsql")` — there's no separate Npgsql tracing extension
+  package, don't confuse it with `Npgsql.OpenTelemetry`'s *metrics*-only
+  `AddNpgsqlInstrumentation`). `CrmApiActivitySource` provides custom spans
+  for background jobs (`JobWorker`) and AI calls (`DealScoringService`) — both
+  lack an inbound HTTP request to hang a span off of otherwise. Console
+  exporter in Development only (avoids spamming test-host stdout); OTLP
+  exporter only if `Observability:OtlpEndpoint` is configured — dormant
+  otherwise, not a hard dependency on a collector existing.
+- **Error tracking**: Sentry (`Sentry.AspNetCore`), wired via
+  `builder.WebHost.UseSentry(...)`, dormant until `Sentry:Dsn` (or the
+  `SENTRY_DSN` env var) is configured. **Gotcha**: an *empty string* Dsn is
+  Sentry's documented no-op, but a `null` Dsn — which is what
+  `Configuration["Sentry:Dsn"]` returns when the key is simply absent, since
+  there's no `appsettings.Production.json` shipped — makes the SDK throw at
+  startup instead. Coerce with `?? ""`, verified by actually booting in
+  `ASPNETCORE_ENVIRONMENT=Production` with no Sentry config, not just reading
+  the SDK docs.
+- Every unhandled exception and every explicit "unexpected failure" (per
+  `backend-api-engineer`'s expected-vs-unexpected error distinction) reports
+  to Sentry with enough context to reproduce, grouped sensibly so one root
+  cause doesn't page as 500 different alerts.
 - **AI-call telemetry**: log every LLM call's latency, token usage, cost, and
   outcome (success/tool-call/error) — this is both a debugging tool and the
   input to unit-economics questions ("what does an AI-drafted email actually

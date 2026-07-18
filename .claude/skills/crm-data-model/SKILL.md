@@ -30,6 +30,8 @@ public class Workspace
     public List<Deal> Deals { get; set; } = [];
     public List<Pipeline> Pipelines { get; set; } = [];
     public List<Activity> Activities { get; set; } = [];
+    public WorkspaceSettings? Settings { get; set; } // see "Workspace configuration" below
+    public List<FieldDefinition> FieldDefinitions { get; set; } = [];
 }
 
 public class WorkspaceMember
@@ -56,6 +58,7 @@ public class Contact
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string LifecycleStage { get; set; } = "lead"; // subscriber|lead|mql|sql|opportunity|customer|churned
+    public string CustomFields { get; set; } = "{}"; // jsonb: keyed by FieldDefinition.Key, see workspace-customization skill
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
@@ -73,6 +76,7 @@ public class Company
     public required string WorkspaceId { get; set; }
     public required string Name { get; set; }
     public string? Domain { get; set; }
+    public string CustomFields { get; set; } = "{}"; // jsonb: keyed by FieldDefinition.Key, see workspace-customization skill
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
@@ -121,6 +125,7 @@ public class Deal
     public int? AmountCents { get; set; } // int, not long — see database-schema-expert
     public string? Currency { get; set; } // ISO 4217; falls back to Workspace.DefaultCurrency when unset
     public string ForecastCategory { get; set; } = "pipeline"; // pipeline|best_case|commit|closed
+    public string CustomFields { get; set; } = "{}"; // jsonb: keyed by FieldDefinition.Key, see workspace-customization skill
     public DateTime? ClosedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -191,10 +196,13 @@ modelBuilder.Entity<Deal>(e =>
 });
 ```
 
-## Workspace configuration (not yet built)
+## Workspace configuration
 
 Makes the same schema work across verticals — see the `workspace-customization`
-skill for the full pattern. When built, translate to EF Core as:
+skill for the full pattern. Built as `Models/WorkspaceSettings.cs` and
+`Models/FieldDefinition.cs`, exposed via `WorkspaceSettingsController` and
+`FieldDefinitionsController` (both `[RequireRole("owner", "admin")]` on writes,
+readable by any workspace member):
 
 ```csharp
 public class WorkspaceSettings
@@ -202,7 +210,7 @@ public class WorkspaceSettings
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public required string WorkspaceId { get; set; } // unique
     public string Terminology { get; set; } = "{}"; // jsonb: entity/field label overrides
-    public List<string> EnabledModules { get; set; } = []; // e.g. ["listings", "policies"]
+    public List<string> EnabledModules { get; set; } = []; // e.g. ["listings", "policies"] — Npgsql maps List<string> to text[] natively
 }
 
 public class FieldDefinition
@@ -210,13 +218,28 @@ public class FieldDefinition
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public required string WorkspaceId { get; set; }
     public required string EntityType { get; set; } // "contact" | "company" | "deal"
-    public required string Key { get; set; } // stable key used in that entity's custom-fields jsonb
+    public required string Key { get; set; } // stable key used in that entity's CustomFields jsonb
     public required string Label { get; set; } // human-facing label, shown in forms/tables/AI context
     public required string FieldType { get; set; } // "text" | "number" | "select" | "date" | "boolean"
     public string? Options { get; set; } // jsonb: for "select", array of allowed values
     public bool Required { get; set; }
     public int Order { get; set; }
 }
+```
+
+`Services/CustomFieldValidator.cs` validates a request's `customFields` object
+against a workspace's `FieldDefinition` rows for the target entity type before
+it's ever persisted — rejects unknown keys, enforces `Required`, and
+type-checks each value against `FieldType` (including `select`'s `Options`
+allow-list). `Services/TerminologyResolver.cs` resolves a canonical key to a
+workspace's configured label (falling back to the canonical English term),
+used both in API responses and — see `DealScoringService` — in AI prompt text,
+per `ai-features-architect`'s vertical-agnostic-prompts guidance.
+
+`ContactsController.Create` is the one entity endpoint wired to accept and
+validate `customFields` today. Company and Deal have the `CustomFields` column
+and the validator is entity-type-agnostic, but neither has a create/update
+endpoint yet for it to attach to — wire it the same way when one lands.
 ```
 
 ## Rules when extending this model

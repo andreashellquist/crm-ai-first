@@ -67,6 +67,19 @@ it covers contacts, the pipeline board, deal detail, moving a deal (both a
 wrong-workspace deal id *and* a wrong-workspace target stage id), logging an
 activity, scoring a deal, and reading job status.
 
+## RBAC tests: assert the allowed side, not just the denied side
+
+For a `[RequireRole(...)]`-gated action, a test suite that only asserts
+"member gets 403" can pass while the "owner succeeds" path is silently
+broken — which is exactly what happened building `RequireRoleAttribute`:
+ASP.NET Core's default JWT inbound claim mapping remapped the `"role"` claim
+away, so `CurrentUser.Role` always fell back to `"member"`, and every
+owner/admin request was *also* getting 403'd. Tests that only checked the
+member-403 case would have shown 100% green while RBAC was completely
+unusable. `FieldDefinitionsControllerTests`/`WorkspaceSettingsControllerTests`
+assert both directions for this reason — always pair a "disallowed role
+rejected" test with a "allowed role succeeds" test for the same endpoint.
+
 ## Testing AI features
 
 - **Never call the real Claude API in unit/CI tests** — inject a fake client

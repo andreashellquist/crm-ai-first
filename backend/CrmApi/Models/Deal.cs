@@ -10,6 +10,7 @@ public class Deal
     public int? AmountCents { get; set; }
     public string? Currency { get; set; }
     public string ForecastCategory { get; set; } = "pipeline";
+    public string CustomFields { get; set; } = "{}"; // jsonb text, keyed by FieldDefinition.Key — see workspace-customization skill
     public DateTime? ClosedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

@@ -1,3 +1,6 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using CrmApi.Dtos;
 using CrmApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +41,57 @@ public class DealScoringServiceTests(CrmApiFactory factory) : IntegrationTestBas
             Assert.Equal(83, persisted.AiScore);
             Assert.Equal("Strong signals.", persisted.AiScoreRationale);
             Assert.NotNull(persisted.AiScoredAt);
+        }
+        finally
+        {
+            Anthropic.NextResponse = null;
+        }
+    }
+
+    [Fact]
+    public async Task ScoreDeal_UsesWorkspaceTerminologyInPrompt()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var terminology = new Dictionary<string, JsonElement>
+        {
+            ["deal"] = JsonSerializer.SerializeToElement(new { singular = "Listing", plural = "Listings" }),
+        };
+        var settingsResponse = await ws.Client.PutAsJsonAsync("/api/workspace/settings", new UpdateWorkspaceSettingsRequest(terminology, null));
+        settingsResponse.EnsureSuccessStatusCode();
+
+        Anthropic.NextResponse = _ => FakeAnthropicMessagesClient.DefaultScoreMessage();
+        try
+        {
+            await ScoreAsync(deal.Id, ws.Workspace.Id);
+
+            var request = Anthropic.LastRequest;
+            Assert.NotNull(request);
+            Assert.Contains("Listing", (string)request!.System!.Value!);
+        }
+        finally
+        {
+            Anthropic.NextResponse = null;
+        }
+    }
+
+    [Fact]
+    public async Task ScoreDeal_WithNoWorkspaceSettings_FallsBackToCanonicalTerm()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        Anthropic.NextResponse = _ => FakeAnthropicMessagesClient.DefaultScoreMessage();
+        try
+        {
+            await ScoreAsync(deal.Id, ws.Workspace.Id);
+
+            var request = Anthropic.LastRequest;
+            Assert.NotNull(request);
+            Assert.Contains("deals", (string)request!.System!.Value!);
         }
         finally
         {

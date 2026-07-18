@@ -10,6 +10,7 @@ public class Contact
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string LifecycleStage { get; set; } = "lead";
+    public string CustomFields { get; set; } = "{}"; // jsonb text, keyed by FieldDefinition.Key — see workspace-customization skill
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }

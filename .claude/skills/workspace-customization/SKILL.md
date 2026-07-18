@@ -15,6 +15,14 @@ the three-tier decision process (core field vs. custom field vs. module) this
 pattern implements, and `crm-data-model` for the underlying tables
 (`WorkspaceSettings`, `FieldDefinition`).
 
+**Built** (terminology overrides + custom fields, §1–2 below):
+`Models/WorkspaceSettings.cs`, `Models/FieldDefinition.cs`,
+`Controllers/WorkspaceSettingsController.cs`,
+`Controllers/FieldDefinitionsController.cs`,
+`Services/TerminologyResolver.cs`, `Services/CustomFieldValidator.cs` in
+`backend/CrmApi`. **Not yet built**: vertical starter templates (§3) and
+optional modules (§4) — still describe the intended pattern below.
+
 ## 1. Terminology overrides
 
 `WorkspaceSettings.terminology` is a `Json` map from canonical entity/field name
@@ -30,36 +38,49 @@ to a display label, e.g.:
 
 Resolve it through one shared helper used everywhere user-facing text is
 produced — UI copy, email templates, AI prompt vocabulary — with a fallback to
-the canonical English term when a key isn't overridden:
+the canonical English term when a key isn't overridden. Built as
+`TerminologyResolver.Resolve(terminologyJson, key, fallback, plural: false)`:
 
-```ts
-function t(settings: WorkspaceSettings, key: string, fallback: string): string {
-  return settings.terminology?.[key]?.label
-      ?? settings.terminology?.[key]?.singular
-      ?? fallback;
+```csharp
+public static string Resolve(string? terminologyJson, string key, string fallback, bool plural = false)
+{
+    // deserialize terminologyJson to {key: {singular, plural, label}},
+    // return (plural ? term.Plural : term.Singular) ?? term.Label ?? fallback
 }
 ```
 
-Never hardcode "Deal"/"Company"/etc. directly in a component or prompt string if
-there's any chance a workspace has relabeled it — route it through `t()`.
-Internal identifiers (route segments, tool/field names, database columns) are
-**never** affected by terminology — only display text and generated prose are.
+`DealScoringService` is the first consumer — it resolves `"deal"` into its
+system prompt and tool description before calling Claude (e.g. "Score this
+Listing based on these signals" for a real-estate workspace), while the tool
+schema's keys (`companyName`, `stageName`, ...) stay canonical regardless, per
+`ai-features-architect`'s vertical-agnostic-prompts guidance below. Never
+hardcode "Deal"/"Company"/etc. directly in a controller response or prompt
+string if there's any chance a workspace has relabeled it — route it through
+`TerminologyResolver`. Internal identifiers (route segments, tool/field names,
+database columns) are **never** affected by terminology — only display text
+and generated prose are.
 
 ## 2. Custom fields
 
 `FieldDefinition` rows (workspace + entityType scoped) describe extra fields;
-values live in the existing `customFields Json` column on Contact/Company/Deal,
-keyed by `FieldDefinition.key`. To add a field for a workspace, insert a
-`FieldDefinition` row — no migration, no deploy.
+values live in the `CustomFields` jsonb-as-text column on Contact/Company/Deal,
+keyed by `FieldDefinition.Key`. To add a field for a workspace, insert a
+`FieldDefinition` row via `POST /api/field-definitions` — no migration, no
+deploy.
 
-- **Validation**: build a Zod schema at request time from that workspace's
-  `FieldDefinition` rows (map `fieldType` → a Zod type, apply `required`), and
-  validate `customFields` against it in the Server Action, same as any other
-  input — see `backend-api-engineer`'s validation conventions.
+- **Validation**: `CustomFieldValidator.ValidateAndSerialize(definitions, input)`
+  loads that workspace's `FieldDefinition` rows for the target entity type and
+  validates a request's `customFields` object against them before it's ever
+  persisted — rejects unknown keys, enforces `Required`, type-checks each
+  value against `FieldType` (`select`'s `Options` allow-list included) — see
+  `backend-api-engineer`'s validation conventions. `ContactsController.Create`
+  is the one entity endpoint wired to it today; Company/Deal have the column
+  and the validator is entity-type-agnostic, but neither has a create/update
+  endpoint yet.
 - **Forms/tables**: render generically from `FieldDefinition` (see
   `frontend-engineer`'s vertical-agnostic UI conventions) — one generic
   "custom field input" component keyed off `fieldType`, not one form per
-  vertical.
+  vertical. Not yet built on the frontend.
 - **AI context**: when a custom field is relevant to a prompt (scoring,
   drafting, summarization), include it as `label: value`, not `key: value` —
   the model and any human reviewing output should see "Bedrooms: 3", not

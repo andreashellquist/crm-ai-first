@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace CrmApi.Dtos;
 
 public record ContactDto(
@@ -6,7 +8,14 @@ public record ContactDto(
     string? LastName,
     string? Email,
     string? CompanyName,
-    string LifecycleStage
+    string LifecycleStage,
+    Dictionary<string, JsonElement> CustomFields
 );
 
-public record CreateContactRequest(string FirstName, string? LastName, string? Email, string? CompanyName);
+public record CreateContactRequest(
+    string FirstName,
+    string? LastName,
+    string? Email,
+    string? CompanyName,
+    Dictionary<string, JsonElement>? CustomFields = null
+);

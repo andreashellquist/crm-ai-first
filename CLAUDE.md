@@ -28,22 +28,58 @@ multi-tenant isolation tests as the highest-priority category (see
 `qa-test-engineer`). CI (`.github/workflows/ci.yml`) runs it, plus frontend
 lint/typecheck/build, on every push/PR.
 
+The remaining Phase 0 gaps have been closed:
+
+- **Workspace-customization scaffolding** (`WorkspaceSettings`, `FieldDefinition`)
+  is built per the `workspace-customization` skill — `WorkspaceSettingsController`
+  (terminology overrides, enabled modules) and `FieldDefinitionsController`
+  (per-workspace custom field definitions, scoped by entity type), with
+  `CustomFieldValidator` enforcing them on write and `TerminologyResolver`
+  resolving display/prompt text with a canonical-term fallback. Contact creation
+  is the one entity wired to accept `customFields` today (`ContactsController`);
+  Company/Deal have the `CustomFields` column and validator ready but no create/
+  update endpoint yet to hang it off — see "Notably not yet built" below.
+- **RBAC enforcement**: `RequireRoleAttribute` (`backend/CrmApi/Authorization`)
+  checks `CurrentUser.Role` at the point of mutation, applied to the
+  workspace-settings and field-definition write endpoints (owner/admin only).
+  Building and testing this surfaced a real bug worth knowing about: ASP.NET
+  Core's JWT handler remaps short claim names (including `"role"` and `"sub"`)
+  to legacy long-form URIs by default, which silently broke `CurrentUser.Role`/
+  `UserId` — fixed via `options.MapInboundClaims = false` on the JWT bearer
+  handler in `Program.cs`. Custom claims like `"workspaceId"` were never
+  affected, which is why isolation tests didn't catch it.
+- **Baseline observability**: OpenTelemetry tracing (ASP.NET Core + HttpClient +
+  Npgsql instrumentation, console exporter in dev, OTLP if `Observability:OtlpEndpoint`
+  is configured), structured JSON console logs in Production with
+  `WorkspaceId`/`TraceId` log-scope enrichment, and Sentry error tracking wired
+  but dormant without a `Sentry:Dsn` — see `devops-observability-expert`. Also
+  caught a real bug: Sentry's SDK throws at startup on a `null` Dsn (only an
+  explicit empty string is a documented no-op), which bit the first Production-mode
+  boot before being coerced with `?? ""`.
+- **AI eval harness** (`backend/CrmApi.Eval`) runs a small fixed set of deal-scoring
+  scenarios against the real Claude API for human review before prompt/tool-schema
+  changes — deliberately outside `dotnet test`/CI since it costs real API calls.
+  Deal scoring's prompt now resolves workspace terminology (e.g. "deal" → "Listing")
+  per `ai-features-architect`'s vertical-agnostic-prompts guidance — the first AI
+  feature to actually consume the new workspace-customization data.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional bar,
 phased roadmap, and the explicit assumptions made to resolve an intentionally vague
 brief — is still ahead. Read it before starting a new feature area; it says what
 phase the feature belongs to and which expert agent in `.claude/agents/` owns it.
-Notably not yet built: Task entity, drag-and-drop on the pipeline board,
-drafting/summarization/next-best-action, an AI eval harness, real OAuth, and
-Playwright e2e in CI (it runs manually for now — see `qa-test-engineer`).
+Notably not yet built: Task entity, drag-and-drop on the pipeline board, generic
+Company/Deal update endpoints (so their custom fields have somewhere to attach),
+drafting/summarization/next-best-action, real OAuth, and Playwright e2e in CI (it
+runs manually for now — see `qa-test-engineer`).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
 below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
-`backend-api-engineer`, `database-schema-expert`, and `auth-security-expert` have
-been updated for the new stack. Skills further from the migration's blast radius
-(`workspace-customization`, `csv-import-dedupe`, `pipeline-kanban-board`,
-`observability-and-slo`, `reporting-read-models`, `public-api-and-webhooks`,
-`notifications-and-digests`, `i18n-currency-timezone`,
+`backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
+`devops-observability-expert`, `qa-test-engineer`, and `workspace-customization`
+have been updated for the new stack. Skills further from the migration's blast
+radius (`csv-import-dedupe`, `pipeline-kanban-board`, `reporting-read-models`,
+`public-api-and-webhooks`, `notifications-and-digests`, `i18n-currency-timezone`,
 `communication-consent-and-suppression`) still show Prisma/TypeScript-flavored
 schema snippets and code examples — the *patterns and conventions* in them
 (multi-tenancy, soft deletes, tool-calling discipline, etc.) still apply, but any

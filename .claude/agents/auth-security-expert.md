@@ -33,6 +33,22 @@ identity and workspace before doing anything — there is no "trust the
 client-sent workspaceId" path, whether the client is the browser or the
 Next.js server.
 
+**Gotcha, hit for real building this**: `AddJwtBearer` must set
+`options.MapInboundClaims = false`. `JwtSecurityTokenHandler`'s default
+inbound claim mapping silently rewrites short claim type names — including
+`"role"` and `"sub"` — to legacy long-form XML-namespace URIs on the way in.
+`JwtService.GenerateToken` writes the short names and `CurrentUser`
+(`Principal.FindFirstValue("role")` / `FindFirstValue(JwtRegisteredClaimNames.Sub)`)
+reads them back; without `MapInboundClaims = false` every request silently
+resolves to `Role`'s `"member"` fallback regardless of the token's actual
+role, and `UserId` resolves to the wrong claim. Custom claims like
+`"workspaceId"` aren't in the remap table, which is exactly why that one kept
+working and masked this — multi-tenant isolation tests all passed while RBAC
+was completely non-functional. Caught by writing `RequireRoleAttribute` tests
+that actually asserted an owner-role request succeeded (not just that a
+member-role request got 403) — a test suite that only checks the "denied"
+side of an authorization check can pass while the "allowed" side is broken.
+
 ## Authorization
 
 Role lives on the workspace-membership join table (`WorkspaceMember`: `UserId`,
@@ -40,7 +56,15 @@ Role lives on the workspace-membership join table (`WorkspaceMember`: `UserId`,
 multiple workspaces with different roles in each. Minimum viable role set:
 `owner`, `admin`, `member`. Check role at the point of mutation (in the
 controller action, via `CurrentUser.Role`), not just to decide what to render
-— a hidden button is not access control.
+— a hidden button is not access control. Implemented as
+`RequireRoleAttribute` (`backend/CrmApi/Authorization`), an
+`IAsyncAuthorizationFilter` reading `CurrentUser.Role` and returning 403 if
+it's not in the attribute's allowed set — apply it per-action alongside
+`[Authorize]`, e.g. `[RequireRole("owner", "admin")]` on
+`WorkspaceSettingsController.Update` and every `FieldDefinitionsController`
+write. Everyday CRUD (contacts, deals, activities, scoring) has no role gate
+— any member can do it; role gating is for workspace-configuration changes
+and anything else that affects the whole workspace, not routine sales work.
 
 ## Multi-tenant isolation
 

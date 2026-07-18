@@ -6,6 +6,7 @@ public class Company
     public required string WorkspaceId { get; set; }
     public required string Name { get; set; }
     public string? Domain { get; set; }
+    public string CustomFields { get; set; } = "{}"; // jsonb text, keyed by FieldDefinition.Key — see workspace-customization skill
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }

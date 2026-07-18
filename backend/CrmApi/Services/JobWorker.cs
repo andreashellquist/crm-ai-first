@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text.Json;
 using CrmApi.Data;
 using CrmApi.Models;
+using CrmApi.Observability;
 using Microsoft.EntityFrameworkCore;
 
 namespace CrmApi.Services;
@@ -75,6 +77,19 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
 
         foreach (var job in jobs)
         {
+            // A job has no inbound HTTP request to hang a trace off of, so it
+            // starts its own root span here — see observability-and-slo:
+            // "a trace/request ID propagated through ... background job".
+            using var activity = CrmApiActivitySource.Instance.StartActivity($"job.{job.Type}");
+            activity?.SetTag("job.id", job.Id);
+            activity?.SetTag("job.workspace_id", job.WorkspaceId);
+            using var _ = logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["WorkspaceId"] = job.WorkspaceId,
+                ["JobId"] = job.Id,
+                ["TraceId"] = activity?.TraceId.ToString(),
+            });
+
             var startedAt = DateTime.UtcNow;
             try
             {
@@ -84,12 +99,14 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
                 await handler(scope.ServiceProvider, job);
                 await db.Jobs.Where(j => j.Id == job.Id)
                     .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, "succeeded"), ct);
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 logger.LogInformation(
                     "job_processed jobId={JobId} type={Type} outcome=succeeded durationMs={DurationMs}",
                     job.Id, job.Type, (DateTime.UtcNow - startedAt).TotalMilliseconds);
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 var willRetry = job.Attempts < job.MaxAttempts;
                 if (willRetry)
                 {

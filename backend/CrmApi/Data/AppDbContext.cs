@@ -15,6 +15,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Deal> Deals => Set<Deal>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<WorkspaceSettings> WorkspaceSettings => Set<WorkspaceSettings>();
+    public DbSet<FieldDefinition> FieldDefinitions => Set<FieldDefinition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +38,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasIndex(c => new { c.WorkspaceId, c.CompanyId });
             e.HasIndex(c => new { c.WorkspaceId, c.Email });
+            e.Property(c => c.CustomFields).HasDefaultValue("{}");
             e.HasOne(c => c.Workspace).WithMany(w => w.Contacts)
                 .HasForeignKey(c => c.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(c => c.Company).WithMany(co => co.Contacts)
@@ -45,6 +48,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Company>(e =>
         {
             e.HasIndex(c => new { c.WorkspaceId, c.Name });
+            e.Property(c => c.CustomFields).HasDefaultValue("{}");
             e.HasOne(c => c.Workspace).WithMany(w => w.Companies)
                 .HasForeignKey(c => c.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -66,6 +70,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasIndex(d => new { d.WorkspaceId, d.StageId });
             e.HasIndex(d => new { d.WorkspaceId, d.PipelineId });
+            e.Property(d => d.CustomFields).HasDefaultValue("{}");
             e.HasOne(d => d.Workspace).WithMany(w => w.Deals)
                 .HasForeignKey(d => d.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(d => d.Pipeline).WithMany(p => p.Deals)
@@ -96,6 +101,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasIndex(j => new { j.Status, j.RunAt });
             e.HasIndex(j => new { j.WorkspaceId, j.Status });
+        });
+
+        modelBuilder.Entity<WorkspaceSettings>(e =>
+        {
+            e.HasIndex(s => s.WorkspaceId).IsUnique();
+            e.Property(s => s.Terminology).HasDefaultValue("{}");
+            e.HasOne(s => s.Workspace).WithOne(w => w.Settings)
+                .HasForeignKey<WorkspaceSettings>(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FieldDefinition>(e =>
+        {
+            // One key per entity type per workspace — inserting a duplicate
+            // FieldDefinition row is a conflict, not a silent overwrite.
+            e.HasIndex(f => new { f.WorkspaceId, f.EntityType, f.Key }).IsUnique();
+            e.HasOne(f => f.Workspace).WithMany(w => w.FieldDefinitions)
+                .HasForeignKey(f => f.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

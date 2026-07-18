@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="CrmApi.Eval/CrmApi.Eval.csproj" />
   <Project Path="CrmApi.Tests/CrmApi.Tests.csproj" />
   <Project Path="CrmApi/CrmApi.csproj" />
 </Solution>

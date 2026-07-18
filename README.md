@@ -66,3 +66,21 @@ npx tsc --noEmit
 CI (`.github/workflows/ci.yml`) runs both on every push/PR against a Postgres
 service container — see `qa-test-engineer` for the test project's structure
 and conventions.
+
+### AI eval harness
+
+`backend/CrmApi.Eval` runs a small fixed set of representative deal-scoring
+scenarios (hot lead, stalled deal, early-stage-but-promising, recent
+objection) against the **real** Claude API and prints each score/rationale
+for human review, plus a soft PASS/WARN against an expected score band per
+scenario. Deliberately not part of `dotnet test`/CI — it costs real API
+calls and its real output (rationale quality) needs a human read, not just
+an assertion. Run it before merging any change to the scoring prompt or tool
+schema:
+
+```bash
+ANTHROPIC_API_KEY=sk-... dotnet run --project backend/CrmApi.Eval
+```
+
+Seeds and tears down its own throwaway workspace in `crm_dotnet_eval`
+(created automatically on first run; override with `EVAL_DATABASE_URL`).
