@@ -1,16 +1,7 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
-
-const createContactSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().optional(),
-  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
-  companyName: z.string().optional(),
-});
 
 export type CreateContactState = {
   error?: string;
@@ -20,40 +11,31 @@ export async function createContactAction(
   _prevState: CreateContactState,
   formData: FormData,
 ): Promise<CreateContactState> {
-  const { workspaceId } = await requireWorkspace();
+  const { api } = await requireWorkspace();
 
-  const parsed = createContactSchema.safeParse({
-    firstName: formData.get("firstName"),
-    lastName: formData.get("lastName"),
-    email: formData.get("email"),
-    companyName: formData.get("companyName"),
-  });
-
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  const firstName = formData.get("firstName");
+  if (typeof firstName !== "string" || firstName.trim() === "") {
+    return { error: "First name is required" };
   }
 
-  const { firstName, lastName, email, companyName } = parsed.data;
+  const lastName = formData.get("lastName");
+  const email = formData.get("email");
+  const companyName = formData.get("companyName");
 
-  let companyId: string | undefined;
-  if (companyName) {
-    const company = await db.company.findFirst({
-      where: { workspaceId, name: companyName },
-    });
-    companyId =
-      company?.id ??
-      (await db.company.create({ data: { workspaceId, name: companyName } })).id;
-  }
-
-  await db.contact.create({
-    data: {
-      workspaceId,
+  // Validation (required fields, email format) now lives server-side in the
+  // .NET API — this action just forwards the request and surfaces its error.
+  const { error } = await api.POST("/api/contacts", {
+    body: {
       firstName,
-      lastName: lastName || undefined,
-      email: email || undefined,
-      companyId,
+      lastName: typeof lastName === "string" && lastName ? lastName : null,
+      email: typeof email === "string" && email ? email : null,
+      companyName: typeof companyName === "string" && companyName ? companyName : null,
     },
   });
+
+  if (error) {
+    return { error: typeof error === "string" ? error : "Could not create contact" };
+  }
 
   revalidatePath("/contacts");
   return {};

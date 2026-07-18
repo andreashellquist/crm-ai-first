@@ -1,30 +1,20 @@
+import "server-only";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { getSession } from "@/lib/session";
+import { createApiClient } from "@/lib/api/client";
 
 /**
- * Resolves the signed-in user's workspace. A user can belong to more than one
- * workspace (crm-data-model / WorkspaceMember); the walking skeleton picks
- * the first membership rather than implementing workspace switching yet.
+ * Resolves the signed-in user's session and a typed client pre-authenticated
+ * against the .NET API. Workspace selection (first membership, no switcher
+ * UI yet) happens once server-side at login — see AuthController.
  */
 export async function requireWorkspace() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await db.workspaceMember.findFirst({
-    where: { userId: session.user.id },
-    include: { workspace: true },
-    orderBy: { createdAt: "asc" },
-  });
-
-  if (!membership) {
-    throw new Error("Signed-in user has no workspace membership");
-  }
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   return {
-    userId: session.user.id,
-    workspaceId: membership.workspaceId,
-    workspace: membership.workspace,
-    role: membership.role,
+    workspaceId: session.workspaceId,
+    workspaceName: session.workspaceName,
+    api: createApiClient(session.token),
   };
 }

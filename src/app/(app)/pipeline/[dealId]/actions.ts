@@ -1,15 +1,7 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
-
-const logActivitySchema = z.object({
-  dealId: z.string(),
-  type: z.enum(["call", "email", "meeting", "note"]),
-  body: z.string().min(1, "Enter some notes"),
-});
 
 export type LogActivityState = { error?: string };
 
@@ -17,35 +9,23 @@ export async function logActivityAction(
   _prevState: LogActivityState,
   formData: FormData,
 ): Promise<LogActivityState> {
-  const { workspaceId } = await requireWorkspace();
+  const { api } = await requireWorkspace();
 
-  const parsed = logActivitySchema.safeParse({
-    dealId: formData.get("dealId"),
-    type: formData.get("type"),
-    body: formData.get("body"),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  const dealId = formData.get("dealId");
+  const type = formData.get("type");
+  const body = formData.get("body");
+  if (typeof dealId !== "string" || typeof type !== "string" || typeof body !== "string" || body.trim() === "") {
+    return { error: "Enter some notes" };
   }
 
-  // Re-check the deal belongs to this workspace before attaching an Activity
-  // to it — same discipline as every other mutation (database-schema-expert).
-  const deal = await db.deal.findFirst({
-    where: { id: parsed.data.dealId, workspaceId },
-    select: { id: true, companyId: true },
+  // Workspace/deal-ownership re-check now happens server-side in the .NET
+  // API (LogActivity re-scopes by workspace before writing).
+  const { error } = await api.POST("/api/deals/{dealId}/activities", {
+    params: { path: { dealId } },
+    body: { type, body },
   });
-  if (!deal) return { error: "Deal not found" };
+  if (error) return { error: "Could not log activity" };
 
-  await db.activity.create({
-    data: {
-      workspaceId,
-      dealId: deal.id,
-      companyId: deal.companyId,
-      type: parsed.data.type,
-      body: parsed.data.body,
-    },
-  });
-
-  revalidatePath(`/pipeline/${deal.id}`);
+  revalidatePath(`/pipeline/${dealId}`);
   return {};
 }

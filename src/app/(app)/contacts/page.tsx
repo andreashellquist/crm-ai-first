@@ -1,15 +1,10 @@
-import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
 import { NewContactForm } from "./new-contact-form";
 
 export default async function ContactsPage() {
-  const { workspaceId } = await requireWorkspace();
-
-  const contacts = await db.contact.findMany({
-    where: { workspaceId, deletedAt: null },
-    include: { company: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const { api } = await requireWorkspace();
+  const { data } = await api.GET("/api/contacts");
+  const contacts = data ?? [];
 
   return (
     <div className="space-y-6">
@@ -37,7 +32,7 @@ export default async function ContactsPage() {
                   {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—"}
                 </td>
                 <td className="px-4 py-2 text-neutral-600">{contact.email ?? "—"}</td>
-                <td className="px-4 py-2 text-neutral-600">{contact.company?.name ?? "—"}</td>
+                <td className="px-4 py-2 text-neutral-600">{contact.companyName ?? "—"}</td>
                 <td className="px-4 py-2 text-neutral-600">{contact.lifecycleStage}</td>
               </tr>
             ))}

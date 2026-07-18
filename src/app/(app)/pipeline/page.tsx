@@ -1,34 +1,10 @@
-import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
+import { formatAmount, sumCents } from "@/lib/money";
 import { DealCard } from "./deal-card";
 
-function formatAmount(cents: number | null, currency: string | null) {
-  if (cents == null) return null;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency ?? "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
 export default async function PipelinePage() {
-  const { workspaceId } = await requireWorkspace();
-
-  const pipeline = await db.pipeline.findFirst({
-    where: { workspaceId, isDefault: true },
-    include: {
-      stages: {
-        orderBy: { order: "asc" },
-        include: {
-          deals: {
-            where: { deletedAt: null },
-            include: { company: true },
-            orderBy: { createdAt: "desc" },
-          },
-        },
-      },
-    },
-  });
+  const { api } = await requireWorkspace();
+  const { data: pipeline } = await api.GET("/api/pipeline");
 
   if (!pipeline) {
     return <p className="text-sm text-neutral-500">No pipeline configured for this workspace yet.</p>;
@@ -47,7 +23,7 @@ export default async function PipelinePage() {
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {pipeline.stages.map((stage) => {
-          const stageValueCents = stage.deals.reduce((sum, deal) => sum + (deal.amountCents ?? 0), 0);
+          const stageValueCents = sumCents(stage.deals.map((deal) => deal.amountCents));
           return (
             <div key={stage.id} className="w-64 flex-none rounded-lg bg-neutral-50 p-3">
               <div className="mb-3 flex items-baseline justify-between">
@@ -62,12 +38,12 @@ export default async function PipelinePage() {
                   <DealCard
                     key={deal.id}
                     dealId={deal.id}
-                    title={deal.company?.name ?? "Untitled deal"}
+                    title={deal.title}
                     amountLabel={formatAmount(deal.amountCents, deal.currency)}
                     stages={allStages}
                     currentStageId={stage.id}
-                    aiScore={deal.aiScore}
-                    aiScoreRationale={deal.aiScoreRationale}
+                    aiScore={deal.aiScore == null ? null : Number(deal.aiScore)}
+                    aiScoreRationale={deal.aiScoreRationale ?? null}
                   />
                 ))}
                 {stage.deals.length === 0 ? (

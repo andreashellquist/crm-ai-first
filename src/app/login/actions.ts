@@ -1,19 +1,25 @@
 "use server";
 
-import { AuthError } from "next-auth";
-import { signIn } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { createApiClient } from "@/lib/api/client";
+import { setSession } from "@/lib/session";
 
 export async function loginAction(_prevState: string | undefined, formData: FormData) {
-  try {
-    await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirectTo: "/",
-    });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return "Invalid email or password.";
-    }
-    throw error;
+  const email = formData.get("email");
+  const password = formData.get("password");
+  if (typeof email !== "string" || typeof password !== "string") {
+    return "Enter an email and password.";
   }
+
+  const client = createApiClient();
+  const { data, response } = await client.POST("/api/auth/login", {
+    body: { email, password },
+  });
+
+  if (!data) {
+    return response.status === 401 ? "Invalid email or password." : "Sign-in failed — try again.";
+  }
+
+  await setSession({ token: data.token, workspaceId: data.workspaceId, workspaceName: data.workspaceName });
+  redirect("/");
 }

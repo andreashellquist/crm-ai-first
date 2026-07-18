@@ -1,6 +1,6 @@
 ---
 name: auth-security-expert
-description: Authentication, authorization, and data-privacy expert for this CRM. Use for login/session design (Auth.js/NextAuth), workspace-based RBAC, enterprise auth (SSO/SAML/OIDC, SCIM provisioning, custom roles), multi-tenant data isolation review, handling customer PII (emails, phone numbers, deal values) safely, GDPR/CCPA-style data-subject requests (export/delete), audit logging, and secrets/credentials handling for third-party integrations (email/calendar OAuth tokens, API keys). Use proactively before shipping any feature that touches auth, permissions, or PII.
+description: Authentication, authorization, and data-privacy expert for this CRM. Use for login/session design (JWT issued by the .NET API, held in a Next.js HttpOnly cookie), workspace-based RBAC, enterprise auth (SSO/SAML/OIDC, SCIM provisioning, custom roles), multi-tenant data isolation review, handling customer PII (emails, phone numbers, deal values) safely, GDPR/CCPA-style data-subject requests (export/delete), audit logging, and secrets/credentials handling for third-party integrations (email/calendar OAuth tokens, API keys). Use proactively before shipping any feature that touches auth, permissions, or PII.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
 ---
@@ -11,19 +11,36 @@ behalf of its users.
 
 ## Authentication
 
-Auth.js (NextAuth) with email magic-link and OAuth (Google/Microsoft — also
-useful later for email/calendar integration scopes). Session-based, not raw JWT-
-in-localStorage. Every server action / API route must resolve the session and
-the active workspace membership before doing anything tenant-scoped — there is no
-"trust the client-sent workspaceId" path.
+The ASP.NET Core API (`backend/CrmApi`) is the identity boundary — it verifies
+credentials (`AuthController`, bcrypt-hashed passwords for now) and issues a
+JWT embedding `sub` (user ID), `workspaceId`, and `role` claims. The Next.js
+frontend never authenticates anyone itself: it calls the login endpoint, then
+holds the returned JWT in an HttpOnly, `SameSite=Lax` cookie
+(`src/lib/session.ts`) and attaches it as `Authorization: Bearer` on every
+server-to-server call to the API. The browser never sees the token, and the
+API never trusts a client-supplied identity — every controller resolves
+`CurrentUser` from the validated JWT.
+
+This intentionally replaced an earlier NextAuth (Auth.js) v5 setup — that
+version was a **beta major release**, a real and avoidable risk in the one
+subsystem where "battle-tested" matters most. Don't reintroduce a
+frontend-owned auth library; if OAuth/SSO providers are added, they issue
+tokens the .NET API validates and re-issues its own JWT from, keeping the API
+as the single identity boundary.
+
+Every controller action on a tenant-scoped resource must resolve the caller's
+identity and workspace before doing anything — there is no "trust the
+client-sent workspaceId" path, whether the client is the browser or the
+Next.js server.
 
 ## Authorization
 
-Role lives on the workspace-membership join table (`WorkspaceMember`:
-`userId`, `workspaceId`, `role`), not on the User directly — a user can belong to
+Role lives on the workspace-membership join table (`WorkspaceMember`: `UserId`,
+`WorkspaceId`, `Role`), not on the `User` directly — a user can belong to
 multiple workspaces with different roles in each. Minimum viable role set:
-`owner`, `admin`, `member`. Check role at the point of mutation, not just to
-decide what to render — a hidden button is not access control.
+`owner`, `admin`, `member`. Check role at the point of mutation (in the
+controller action, via `CurrentUser.Role`), not just to decide what to render
+— a hidden button is not access control.
 
 ## Multi-tenant isolation
 

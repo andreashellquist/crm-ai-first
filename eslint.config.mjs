@@ -12,8 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Generated Prisma client — not hand-written source.
-    "src/generated/**",
+    // Generated from the .NET API's OpenAPI spec — not hand-written source.
+    "src/lib/api/schema.d.ts",
   ]),
 ]);
 

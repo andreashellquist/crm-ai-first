@@ -1,17 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
+import { formatAmount } from "@/lib/money";
 import { LogActivityForm } from "./log-activity-form";
-
-function formatAmount(cents: number | null, currency: string | null) {
-  if (cents == null) return null;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency ?? "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
 
 const ACTIVITY_LABELS: Record<string, string> = {
   call: "Call",
@@ -26,17 +17,9 @@ export default async function DealDetailPage({
   params: Promise<{ dealId: string }>;
 }) {
   const { dealId } = await params;
-  const { workspaceId } = await requireWorkspace();
+  const { api } = await requireWorkspace();
 
-  const deal = await db.deal.findFirst({
-    where: { id: dealId, workspaceId, deletedAt: null },
-    include: {
-      stage: true,
-      company: true,
-      contacts: true,
-      activities: { orderBy: { createdAt: "desc" } },
-    },
-  });
+  const { data: deal } = await api.GET("/api/deals/{dealId}", { params: { path: { dealId } } });
   if (!deal) notFound();
 
   return (
@@ -45,9 +28,9 @@ export default async function DealDetailPage({
         <Link href="/pipeline" className="text-sm text-neutral-500 hover:text-neutral-950">
           ← Pipeline
         </Link>
-        <h1 className="mt-1 text-xl font-semibold">{deal.company?.name ?? "Untitled deal"}</h1>
+        <h1 className="mt-1 text-xl font-semibold">{deal.title}</h1>
         <p className="text-sm text-neutral-500">
-          {deal.stage.name} · {formatAmount(deal.amountCents, deal.currency) ?? "No amount set"}
+          {deal.stageName} · {formatAmount(deal.amountCents, deal.currency) ?? "No amount set"}
         </p>
       </div>
 
@@ -60,14 +43,12 @@ export default async function DealDetailPage({
         </div>
       ) : null}
 
-      {deal.contacts.length > 0 ? (
+      {deal.contactNames.length > 0 ? (
         <div>
           <h2 className="text-sm font-semibold text-neutral-700">Contacts</h2>
           <ul className="mt-1 text-sm text-neutral-600">
-            {deal.contacts.map((contact) => (
-              <li key={contact.id}>
-                {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email}
-              </li>
+            {deal.contactNames.map((name) => (
+              <li key={name}>{name}</li>
             ))}
           </ul>
         </div>
@@ -90,7 +71,7 @@ export default async function DealDetailPage({
                   <span className="font-medium text-neutral-700">
                     {ACTIVITY_LABELS[activity.type] ?? activity.type}
                   </span>
-                  <span>{activity.createdAt.toLocaleString()}</span>
+                  <span>{new Date(activity.createdAt).toLocaleString()}</span>
                 </div>
                 {activity.body ? <p className="mt-1 text-neutral-800">{activity.body}</p> : null}
               </li>

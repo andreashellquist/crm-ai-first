@@ -1,213 +1,234 @@
 ---
 name: crm-data-model
-description: Canonical Prisma schema reference for this CRM's core entities (Workspace, Contact, Company, Deal, Pipeline, Stage, Activity, Task, WorkspaceMember). Load this before creating or modifying the Prisma schema, adding a new CRM entity, or writing a migration, so new tables follow the same multi-tenancy, soft-delete, and naming conventions as everything else instead of drifting.
+description: Canonical EF Core entity reference for this CRM's core entities (Workspace, Contact, Company, Deal, Pipeline, Stage, Activity, Task, WorkspaceMember), living in backend/CrmApi/Models. Load this before creating or modifying an entity, adding a new CRM object, or writing a migration, so new tables follow the same multi-tenancy, soft-delete, and naming conventions as everything else instead of drifting.
 ---
 
 # CRM data model
 
-Reference schema for this project's core entities. Treat this as the source of
-truth for naming and relations; extend it rather than inventing parallel
-structures. See the `crm-domain-expert` agent for *why* the model is shaped this
-way, and `database-schema-expert` for indexing/RLS/migration conventions.
+Reference schema for this project's core entities, as actually implemented in
+`backend/CrmApi/Models/*.cs` (one file per entity) and configured in
+`backend/CrmApi/Data/AppDbContext.cs`. Treat this as the source of truth for
+naming and relations; extend it rather than inventing parallel structures. See
+the `crm-domain-expert` agent for *why* the model is shaped this way, and
+`database-schema-expert` for indexing/RLS/migration conventions.
 
-## Canonical Prisma shape
+## Canonical EF Core shape
 
-```prisma
-model Workspace {
-  id              String   @id @default(cuid())
-  name            String
-  defaultCurrency String   @default("USD") // ISO 4217; see i18n-currency-timezone skill
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+```csharp
+// Models/Workspace.cs
+public class Workspace
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string Name { get; set; }
+    public string DefaultCurrency { get; set; } = "USD"; // ISO 4217; see i18n-currency-timezone skill
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-  members   WorkspaceMember[]
-  contacts  Contact[]
-  companies Company[]
-  deals     Deal[]
-  pipelines Pipeline[]
+    public List<WorkspaceMember> Members { get; set; } = [];
+    public List<Contact> Contacts { get; set; } = [];
+    public List<Company> Companies { get; set; } = [];
+    public List<Deal> Deals { get; set; } = [];
+    public List<Pipeline> Pipelines { get; set; } = [];
+    public List<Activity> Activities { get; set; } = [];
 }
 
-model WorkspaceMember {
-  id          String   @id @default(cuid())
-  workspaceId String
-  userId      String
-  role        String   // "owner" | "admin" | "member"
-  timezone    String   @default("UTC") // IANA tz, e.g. "America/New_York" — see i18n-currency-timezone
-  createdAt   DateTime @default(now())
+public class WorkspaceMember
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string UserId { get; set; }
+    public string Role { get; set; } = "member"; // owner | admin | member
+    public string Timezone { get; set; } = "UTC"; // IANA tz, e.g. "America/New_York" — see i18n-currency-timezone
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
-
-  @@unique([workspaceId, userId])
+    public Workspace? Workspace { get; set; }
+    public User? User { get; set; }
 }
 
-model Contact {
-  id             String    @id @default(cuid())
-  workspaceId    String
-  companyId      String?
-  firstName      String?
-  lastName       String?
-  email          String?
-  phone          String?
-  lifecycleStage String    @default("lead") // subscriber|lead|mql|sql|opportunity|customer|churned
-  customFields   Json?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
+// Models/Contact.cs
+public class Contact
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public string? CompanyId { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string LifecycleStage { get; set; } = "lead"; // subscriber|lead|mql|sql|opportunity|customer|churned
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeletedAt { get; set; }
 
-  workspace  Workspace   @relation(fields: [workspaceId], references: [id])
-  company    Company?    @relation(fields: [companyId], references: [id])
-  deals      Deal[]
-  activities Activity[]
-  tasks      Task[]
-
-  @@index([workspaceId, companyId])
-  @@index([workspaceId, email])
+    public Workspace? Workspace { get; set; }
+    public Company? Company { get; set; }
+    public List<Deal> Deals { get; set; } = [];
+    public List<Activity> Activities { get; set; } = [];
 }
 
-model Company {
-  id          String    @id @default(cuid())
-  workspaceId String
-  name        String
-  domain      String?
-  customFields Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+// Models/Company.cs
+public class Company
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string Name { get; set; }
+    public string? Domain { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeletedAt { get; set; }
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
-  contacts  Contact[]
-  deals     Deal[]
-
-  @@index([workspaceId, name])
+    public Workspace? Workspace { get; set; }
+    public List<Contact> Contacts { get; set; } = [];
+    public List<Deal> Deals { get; set; } = [];
+    public List<Activity> Activities { get; set; } = [];
 }
 
-model Pipeline {
-  id          String   @id @default(cuid())
-  workspaceId String
-  name        String
-  isDefault   Boolean  @default(false)
+// Models/Pipeline.cs
+public class Pipeline
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string Name { get; set; }
+    public bool IsDefault { get; set; }
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
-  stages    Stage[]
-  deals     Deal[]
+    public Workspace? Workspace { get; set; }
+    public List<Stage> Stages { get; set; } = [];
+    public List<Deal> Deals { get; set; } = [];
 }
 
-model Stage {
-  id          String  @id @default(cuid())
-  pipelineId  String
-  name        String
-  order       Int
-  probability Int     // 0-100
-  isWon       Boolean @default(false)
-  isLost      Boolean @default(false)
+public class Stage
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string PipelineId { get; set; }
+    public required string Name { get; set; }
+    public int Order { get; set; }
+    public int Probability { get; set; } // 0-100
+    public bool IsWon { get; set; }
+    public bool IsLost { get; set; }
 
-  pipeline Pipeline @relation(fields: [pipelineId], references: [id])
-  deals    Deal[]
-
-  @@index([pipelineId, order])
+    public Pipeline? Pipeline { get; set; }
+    public List<Deal> Deals { get; set; } = [];
 }
 
-model Deal {
-  id               String    @id @default(cuid())
-  workspaceId      String
-  pipelineId       String
-  stageId          String
-  companyId        String?
-  amountCents      Int?
-  currency         String?   // ISO 4217; falls back to Workspace.defaultCurrency when unset
-  forecastCategory String    @default("pipeline") // pipeline|best_case|commit|closed
-  closedAt         DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  deletedAt        DateTime?
+// Models/Deal.cs
+public class Deal
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string PipelineId { get; set; }
+    public required string StageId { get; set; }
+    public string? CompanyId { get; set; }
+    public int? AmountCents { get; set; } // int, not long — see database-schema-expert
+    public string? Currency { get; set; } // ISO 4217; falls back to Workspace.DefaultCurrency when unset
+    public string ForecastCategory { get; set; } = "pipeline"; // pipeline|best_case|commit|closed
+    public DateTime? ClosedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeletedAt { get; set; }
 
-  workspace  Workspace  @relation(fields: [workspaceId], references: [id])
-  pipeline   Pipeline   @relation(fields: [pipelineId], references: [id])
-  stage      Stage      @relation(fields: [stageId], references: [id])
-  company    Company?   @relation(fields: [companyId], references: [id])
-  contacts   Contact[]
-  activities Activity[]
-  tasks      Task[]
+    // AI deal scoring (ai-features-architect / lead-deal-scoring skill)
+    public int? AiScore { get; set; }
+    public string? AiScoreRationale { get; set; }
+    public string? AiScoreSignals { get; set; } // jsonb text
+    public DateTime? AiScoredAt { get; set; }
 
-  @@index([workspaceId, stageId])
-  @@index([workspaceId, pipelineId])
+    public Workspace? Workspace { get; set; }
+    public Pipeline? Pipeline { get; set; }
+    public Stage? Stage { get; set; }
+    public Company? Company { get; set; }
+    public List<Contact> Contacts { get; set; } = [];
+    public List<Activity> Activities { get; set; } = [];
 }
 
-model Activity {
-  id          String   @id @default(cuid())
-  workspaceId String
-  type        String   // call|email|meeting|note
-  body        String?
-  contactId   String?
-  companyId   String?
-  dealId      String?
-  createdAt   DateTime @default(now())
+// Models/Activity.cs
+public class Activity
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string Type { get; set; } // call | email | meeting | note
+    public string? Body { get; set; }
+    public string? ContactId { get; set; }
+    public string? CompanyId { get; set; }
+    public string? DealId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-  contact Contact? @relation(fields: [contactId], references: [id])
-  company Company? @relation(fields: [companyId], references: [id])
-  deal    Deal?    @relation(fields: [dealId], references: [id])
-
-  @@index([workspaceId, dealId, createdAt])
-  @@index([workspaceId, contactId, createdAt])
+    public Workspace? Workspace { get; set; }
+    public Contact? Contact { get; set; }
+    public Company? Company { get; set; }
+    public Deal? Deal { get; set; }
 }
 
-model Task {
-  id           String    @id @default(cuid())
-  workspaceId  String
-  title        String
-  dueAt        DateTime?
-  completedAt  DateTime?
-  aiSuggested  Boolean   @default(false)
-  contactId    String?
-  companyId    String?
-  dealId       String?
-  createdAt    DateTime  @default(now())
+// Task — not yet built. Follows the same shape as Activity when it lands:
+// public class Task
+// {
+//     public string Id { get; set; } = Guid.NewGuid().ToString("N");
+//     public required string WorkspaceId { get; set; }
+//     public required string Title { get; set; }
+//     public DateTime? DueAt { get; set; }
+//     public DateTime? CompletedAt { get; set; }
+//     public bool AiSuggested { get; set; }
+//     public string? ContactId { get; set; }
+//     public string? CompanyId { get; set; }
+//     public string? DealId { get; set; }
+//     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+// }
+```
 
-  contact Contact? @relation(fields: [contactId], references: [id])
-  deal    Deal?    @relation(fields: [dealId], references: [id])
+`AppDbContext.OnModelCreating` (see `database-schema-expert` for the delete-behavior
+reasoning) configures indexes and relationships via Fluent API — e.g.:
 
-  @@index([workspaceId, dueAt])
+```csharp
+modelBuilder.Entity<Deal>(e =>
+{
+    e.HasIndex(d => new { d.WorkspaceId, d.StageId });
+    e.HasIndex(d => new { d.WorkspaceId, d.PipelineId });
+    e.HasOne(d => d.Workspace).WithMany(w => w.Deals)
+        .HasForeignKey(d => d.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+    e.HasOne(d => d.Stage).WithMany(s => s.Deals)
+        .HasForeignKey(d => d.StageId).OnDelete(DeleteBehavior.Restrict);
+    e.HasMany(d => d.Contacts).WithMany(c => c.Deals)
+        .UsingEntity(j => j.ToTable("DealContacts"));
+});
+```
+
+## Workspace configuration (not yet built)
+
+Makes the same schema work across verticals — see the `workspace-customization`
+skill for the full pattern. When built, translate to EF Core as:
+
+```csharp
+public class WorkspaceSettings
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; } // unique
+    public string Terminology { get; set; } = "{}"; // jsonb: entity/field label overrides
+    public List<string> EnabledModules { get; set; } = []; // e.g. ["listings", "policies"]
 }
 
-// -- Workspace configuration (what makes the same schema work across
-// -- verticals — see the `workspace-customization` skill for the full pattern)
-
-model WorkspaceSettings {
-  id              String @id @default(cuid())
-  workspaceId     String @unique
-  terminology     Json   @default("{}") // entity/field label overrides
-  enabledModules  String[] @default([]) // e.g. ["listings", "policies"]
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
-}
-
-model FieldDefinition {
-  id          String   @id @default(cuid())
-  workspaceId String
-  entityType  String   // "contact" | "company" | "deal"
-  key         String   // stable key used in that entity's customFields Json
-  label       String   // human-facing label, shown in forms/tables/AI context
-  fieldType   String   // "text" | "number" | "select" | "date" | "boolean"
-  options     Json?    // for "select": array of allowed values
-  required    Boolean  @default(false)
-  order       Int      @default(0)
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
-
-  @@unique([workspaceId, entityType, key])
-  @@index([workspaceId, entityType, order])
+public class FieldDefinition
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string EntityType { get; set; } // "contact" | "company" | "deal"
+    public required string Key { get; set; } // stable key used in that entity's custom-fields jsonb
+    public required string Label { get; set; } // human-facing label, shown in forms/tables/AI context
+    public required string FieldType { get; set; } // "text" | "number" | "select" | "date" | "boolean"
+    public string? Options { get; set; } // jsonb: for "select", array of allowed values
+    public bool Required { get; set; }
+    public int Order { get; set; }
 }
 ```
 
 ## Rules when extending this model
 
-- Every new tenant-scoped table gets `workspaceId` plus a composite index pairing
-  it with whatever the table is commonly filtered/sorted by — never a bare index
-  on `workspaceId` alone.
-- User-facing records get `deletedAt` soft delete; join/log tables don't need it.
-- Polymorphic attachment (Activity/Task → Contact/Company/Deal) uses explicit
-  nullable FK columns, not a generic `entityType`/`entityId` pair.
-- Money is `Int` cents, never `Float`.
+- Every new tenant-scoped entity gets `WorkspaceId` plus a composite index
+  pairing it with whatever's commonly filtered/sorted by — never a bare index
+  on `WorkspaceId` alone.
+- User-facing records get `DeletedAt` soft delete; join/log tables don't need
+  it.
+- Polymorphic attachment (`Activity`/`Task` → `Contact`/`Company`/`Deal`) uses
+  explicit nullable FK columns, not a generic `EntityType`/`EntityId` pair.
+- Money is `int` cents, never `float`/`double`.
 - A new vertical-specific requirement is **not** a reason to add a column to
   `Contact`/`Company`/`Deal` — it's a `FieldDefinition` row (or, if the data
   shape is genuinely different, an optional module table). See
@@ -217,6 +238,7 @@ model FieldDefinition {
   tables, `Notification`/`NotificationPreference`, and `ApiKey`/
   `WebhookSubscription`/`WebhookDelivery` live in their own skills
   (`reporting-read-models`, `notifications-and-digests`,
-  `public-api-and-webhooks`) rather than here, since they're owned by different
-  agents and have different lifecycle/consistency requirements than the core
-  model — don't merge them into this file.
+  `public-api-and-webhooks`) rather than here, since they're owned by
+  different agents and have different lifecycle/consistency requirements
+  than the core model — don't merge them into this file. Those skills still
+  show Prisma-era TypeScript; translate the shape, don't copy it verbatim.

@@ -1,16 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/lib/workspace";
-import { signOut } from "@/lib/auth";
+import { clearSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { workspace } = await requireWorkspace();
+  const { workspaceName } = await requireWorkspace();
 
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-3">
         <div className="flex items-center gap-6">
-          <span className="font-semibold">{workspace.name}</span>
+          <span className="font-semibold">{workspaceName}</span>
           <nav className="flex gap-4 text-sm text-neutral-600">
             <Link href="/contacts" className="hover:text-neutral-950">
               Contacts
@@ -23,7 +24,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <form
           action={async () => {
             "use server";
-            await signOut({ redirectTo: "/login" });
+            await clearSession();
+            redirect("/login");
           }}
         >
           <Button variant="ghost" size="sm" type="submit">
