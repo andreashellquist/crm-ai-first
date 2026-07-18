@@ -19,10 +19,39 @@ and AI features producing plausible-but-wrong output.
   here defeats the purpose. `DealScoringService` is also exercised directly
   (bypassing HTTP + the job queue) for validation-error paths, so tests don't
   have to wait out `JobWorker`'s retry backoff.
-- **E2E (Playwright)**: the golden-path user flows — sign in, create a contact,
-  move a deal through the pipeline, request an AI draft and see it render. Keep
-  this suite small and high-value; it's not where exhaustive edge-case coverage
-  belongs. Not yet wired into CI (see CI gates below) — run manually until it is.
+- **E2E (Playwright, `e2e/`)**: the golden-path user flows — sign in, create a
+  contact, move a deal through the pipeline (via the `<select>` fallback, not
+  simulated native drag events — far more reliable in CI), log an activity, and
+  smoke-test each AI feature's request/poll/render loop. Keep this suite small
+  and high-value; it's not where exhaustive edge-case coverage belongs — that's
+  `backend/CrmApi.Tests`. Wired into CI (see CI gates below). Run locally with
+  `pnpm test:e2e` (needs Postgres + a seeded dev DB — see
+  `dotnet run --project backend/CrmApi -- seed`); `playwright.config.ts`'s
+  `webServer` starts both apps for you.
+  - **AI feature specs assert reachability, not content.** CI has no
+    `ANTHROPIC_API_KEY`, so `e2e/ai-features.spec.ts` only asserts that
+    clicking a "Score/Summarize/Draft/Suggest with AI" button leaves its
+    loading state and produces zero console errors — never that it returns
+    specific generated text. Deterministic content assertions belong in
+    `backend/CrmApi.Tests` against `FakeAnthropicMessagesClient`.
+  - **Wait for the real mutation, not the optimistic UI state, before
+    reloading.** `pipeline-board.tsx`'s `handleMove` is called via `void
+    handleMove(...)` (fire-and-forget) and updates local state optimistically
+    before the `moveDealStageAction` Server Action's POST resolves. A test
+    that asserts the `<select>`'s value then immediately `page.reload()`s can
+    race ahead of the real persist and read stale data back. Use
+    `page.waitForResponse(...)` alongside the triggering action instead — see
+    `e2e/pipeline.spec.ts`.
+  - **`Job.Result`'s JSON must be camelCase** — the frontend parses it as
+    plain JSON (`getDraftJobStatusAction`, `getNextBestActionJobStatusAction`),
+    but `JsonSerializer.Serialize(result)`'s C#-side default is PascalCase
+    (matching the record property names verbatim), not the camelCase every
+    controller-returned DTO uses. `JobWorker.ResultOptions` (camelCase naming
+    policy) fixes this; a case-sensitive `Assert.Contains("\"subject\":", ...)`
+    in `JobQueueIntegrationTests` guards the regression — a case-insensitive
+    deserialize alone (`PropertyNameCaseInsensitive = true`) will not catch
+    this class of bug, since it masks the exact casing mismatch the frontend
+    actually breaks on.
 
 ## Test project structure (`backend/CrmApi.Tests`)
 
@@ -114,11 +143,24 @@ rejected" test with a "allowed role succeeds" test for the same endpoint.
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on every push/PR: a frontend job (`pnpm lint`,
-`tsc --noEmit`, `pnpm build`) and a backend job (`dotnet build` +
-`dotnet test backend/CrmApi.slnx` against a Postgres service container). Both
-block merge. Playwright e2e isn't in CI yet — it needs the full stack (both
-apps + Postgres + a seeded/reset DB) running together, which is more setup
-than the service-container pattern above covers; run it manually until that's
-built out. Fix or quarantine flaky tests promptly instead of letting the team
-learn to ignore red CI.
+`.github/workflows/ci.yml` runs on every push/PR, three jobs, all blocking:
+
+- **frontend**: `pnpm lint`, `tsc --noEmit`, `pnpm build` — against the
+  checked-in `backend/openapi.json`/`schema.d.ts`, no .NET backend running.
+- **backend**: `dotnet build` + `dotnet test backend/CrmApi.slnx` against a
+  Postgres service container (`crm_dotnet_test`, migrated by
+  `CrmApiFactory.InitializeAsync`).
+- **e2e**: runs the full stack together against a second, separate Postgres
+  service container seeded with the fixed dev dataset
+  (`POSTGRES_DB: crm_dotnet_dev`, matching `appsettings.Development.json`'s
+  checked-in dev-only connection string — no override needed). Steps: build
+  the backend (Debug — `dotnet run --no-build` needs those binaries, not
+  Release), run `dotnet run --project backend/CrmApi --no-build -- seed`
+  (applies migrations + seeds `Data/Seed.cs`'s demo user/workspace/deal), then
+  `pnpm exec playwright test`, whose `webServer` config starts both apps and
+  waits for the backend's anonymous `/health` endpoint and the frontend's
+  `/login` page before running. The HTML report uploads as a build artifact on
+  every run (pass or fail) for debugging.
+
+Fix or quarantine flaky tests promptly instead of letting the team learn to
+ignore red CI.

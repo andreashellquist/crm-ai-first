@@ -14,6 +14,7 @@ public class Workspace
     public List<Deal> Deals { get; set; } = [];
     public List<Pipeline> Pipelines { get; set; } = [];
     public List<Activity> Activities { get; set; } = [];
+    public List<TaskItem> Tasks { get; set; } = [];
     public WorkspaceSettings? Settings { get; set; }
     public List<FieldDefinition> FieldDefinitions { get; set; } = [];
 }

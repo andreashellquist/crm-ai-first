@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { moveDealStageAction, scoreDealAction, getJobStatusAction } from "./actions";
+import { scoreDealAction, getJobStatusAction } from "./actions";
 import { Button } from "@/components/ui/button";
 
 type Stage = { id: string; name: string };
@@ -19,6 +19,7 @@ export function DealCard({
   currentStageId,
   aiScore,
   aiScoreRationale,
+  onMove,
 }: {
   dealId: string;
   title: string;
@@ -27,9 +28,13 @@ export function DealCard({
   currentStageId: string;
   aiScore: number | null;
   aiScoreRationale: string | null;
+  // Called with the target stage id — the parent board owns the actual
+  // mutation + optimistic update so drag-and-drop and this dropdown are the
+  // same code path (pipeline-kanban-board skill's accessibility fallback
+  // requirement: "implement the move as one shared function").
+  onMove: (stageId: string) => void;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [scoring, setScoring] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
   const stopPolling = useRef(false);
@@ -76,7 +81,7 @@ export function DealCard({
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
+    <div data-testid={`deal-card-${dealId}`} className="space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-sm">
       <Link href={`/pipeline/${dealId}`} className="block text-sm font-medium hover:underline">
         {title}
       </Link>
@@ -94,23 +99,16 @@ export function DealCard({
       ) : null}
       {scoreError ? <p className="text-xs text-red-600">{scoreError}</p> : null}
 
-      {/* Explicit "move to stage" control rather than drag-and-drop for this
-          walking skeleton — keeps stage changes keyboard/screen-reader
-          operable by default (pipeline-kanban-board skill's accessibility
-          fallback requirement). Drag-and-drop can be layered on top later,
-          calling this same action. */}
+      {/* Explicit "move to stage" control — keeps stage changes keyboard/
+          screen-reader operable, not just drag-and-drop (pipeline-kanban-board
+          skill's accessibility fallback requirement). Calls the same onMove
+          the board's drag handler calls. */}
       <label className="block text-xs text-neutral-500">
         Stage
         <select
-          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs disabled:opacity-50"
+          className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs"
           value={currentStageId}
-          disabled={pending}
-          onChange={(event) => {
-            const stageId = event.target.value;
-            startTransition(() => {
-              void moveDealStageAction({ dealId, stageId });
-            });
-          }}
+          onChange={(event) => onMove(event.target.value)}
         >
           {stages.map((stage) => (
             <option key={stage.id} value={stage.id}>

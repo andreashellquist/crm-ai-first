@@ -137,12 +137,20 @@ public class Deal
     public string? AiScoreSignals { get; set; } // jsonb text
     public DateTime? AiScoredAt { get; set; }
 
+    // AI deal summary — summarize-on-read with an incremental cache
+    // (SummarizationService only sends Claude activity logged after
+    // AiSummarizedAt plus the prior summary text, not the whole history each
+    // time). See ai-features-architect's "Summarization" pattern.
+    public string? AiSummary { get; set; }
+    public DateTime? AiSummarizedAt { get; set; }
+
     public Workspace? Workspace { get; set; }
     public Pipeline? Pipeline { get; set; }
     public Stage? Stage { get; set; }
     public Company? Company { get; set; }
     public List<Contact> Contacts { get; set; } = [];
     public List<Activity> Activities { get; set; } = [];
+    public List<TaskItem> Tasks { get; set; } = [];
 }
 
 // Models/Activity.cs
@@ -163,20 +171,26 @@ public class Activity
     public Deal? Deal { get; set; }
 }
 
-// Task — not yet built. Follows the same shape as Activity when it lands:
-// public class Task
-// {
-//     public string Id { get; set; } = Guid.NewGuid().ToString("N");
-//     public required string WorkspaceId { get; set; }
-//     public required string Title { get; set; }
-//     public DateTime? DueAt { get; set; }
-//     public DateTime? CompletedAt { get; set; }
-//     public bool AiSuggested { get; set; }
-//     public string? ContactId { get; set; }
-//     public string? CompanyId { get; set; }
-//     public string? DealId { get; set; }
-//     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-// }
+// Models/TaskItem.cs — named TaskItem, not Task, to avoid colliding with
+// System.Threading.Tasks.Task. Same polymorphic-attachment shape as Activity.
+public class TaskItem
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public required string WorkspaceId { get; set; }
+    public required string Title { get; set; }
+    public DateTime? DueAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public bool AiSuggested { get; set; }
+    public string? ContactId { get; set; }
+    public string? CompanyId { get; set; }
+    public string? DealId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Workspace? Workspace { get; set; }
+    public Contact? Contact { get; set; }
+    public Company? Company { get; set; }
+    public Deal? Deal { get; set; }
+}
 ```
 
 `AppDbContext.OnModelCreating` (see `database-schema-expert` for the delete-behavior
@@ -236,10 +250,10 @@ workspace's configured label (falling back to the canonical English term),
 used both in API responses and — see `DealScoringService` — in AI prompt text,
 per `ai-features-architect`'s vertical-agnostic-prompts guidance.
 
-`ContactsController.Create` is the one entity endpoint wired to accept and
-validate `customFields` today. Company and Deal have the `CustomFields` column
-and the validator is entity-type-agnostic, but neither has a create/update
-endpoint yet for it to attach to — wire it the same way when one lands.
+`ContactsController.Create`, `CompaniesController.Update`, and
+`PipelineController.UpdateDeal` all validate `customFields` through
+`CustomFieldValidator` before persisting — the validator is entity-type-agnostic,
+so wiring a new endpoint to it is the same few lines each time.
 ```
 
 ## Rules when extending this model

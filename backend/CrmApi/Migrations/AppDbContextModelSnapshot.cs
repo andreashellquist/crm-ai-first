@@ -190,6 +190,12 @@ namespace CrmApi.Migrations
                     b.Property<DateTime?>("AiScoredAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("AiSummarizedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AiSummary")
+                        .HasColumnType("text");
+
                     b.Property<int?>("AmountCents")
                         .HasColumnType("integer");
 
@@ -314,6 +320,9 @@ namespace CrmApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Result")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("RunAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -393,6 +402,57 @@ namespace CrmApi.Migrations
                     b.HasIndex("PipelineId", "Order");
 
                     b.ToTable("Stages");
+                });
+
+            modelBuilder.Entity("CrmApi.Models.TaskItem", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("AiSuggested")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("CompanyId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ContactId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DealId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("WorkspaceId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("ContactId");
+
+                    b.HasIndex("DealId");
+
+                    b.HasIndex("WorkspaceId", "ContactId");
+
+                    b.HasIndex("WorkspaceId", "DealId");
+
+                    b.HasIndex("WorkspaceId", "CompletedAt", "DueAt");
+
+                    b.ToTable("Tasks");
                 });
 
             modelBuilder.Entity("CrmApi.Models.User", b =>
@@ -650,6 +710,38 @@ namespace CrmApi.Migrations
                     b.Navigation("Pipeline");
                 });
 
+            modelBuilder.Entity("CrmApi.Models.TaskItem", b =>
+                {
+                    b.HasOne("CrmApi.Models.Company", "Company")
+                        .WithMany("Tasks")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CrmApi.Models.Contact", "Contact")
+                        .WithMany("Tasks")
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CrmApi.Models.Deal", "Deal")
+                        .WithMany("Tasks")
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CrmApi.Models.Workspace", "Workspace")
+                        .WithMany("Tasks")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Contact");
+
+                    b.Navigation("Deal");
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("CrmApi.Models.WorkspaceMember", b =>
                 {
                     b.HasOne("CrmApi.Models.User", "User")
@@ -687,16 +779,22 @@ namespace CrmApi.Migrations
                     b.Navigation("Contacts");
 
                     b.Navigation("Deals");
+
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("CrmApi.Models.Contact", b =>
                 {
                     b.Navigation("Activities");
+
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("CrmApi.Models.Deal", b =>
                 {
                     b.Navigation("Activities");
+
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("CrmApi.Models.Pipeline", b =>
@@ -733,6 +831,8 @@ namespace CrmApi.Migrations
                     b.Navigation("Pipelines");
 
                     b.Navigation("Settings");
+
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }

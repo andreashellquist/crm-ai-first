@@ -27,6 +27,7 @@ namespace CrmApi.Tests;
 public class CrmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public FakeAnthropicMessagesClient Anthropic { get; } = new();
+    public FakeGoogleOAuthClient GoogleOAuth { get; } = new();
 
     static CrmApiFactory()
     {
@@ -45,6 +46,8 @@ public class CrmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             services.RemoveAll<IAnthropicMessagesClient>();
             services.AddSingleton<IAnthropicMessagesClient>(Anthropic);
+            services.RemoveAll<IGoogleOAuthClient>();
+            services.AddSingleton<IGoogleOAuthClient>(GoogleOAuth);
 
             // JobWorker normally self-schedules on a 2s idle-poll loop as a
             // BackgroundService. Tests drive it deterministically instead by

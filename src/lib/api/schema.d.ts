@@ -47,6 +47,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/google/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GoogleExchangeRequest"];
+                    "text/json": components["schemas"]["GoogleExchangeRequest"];
+                    "application/*+json": components["schemas"]["GoogleExchangeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LoginResponse"];
+                        "application/json": components["schemas"]["LoginResponse"];
+                        "text/json": components["schemas"]["LoginResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CompanyDto"][];
+                        "application/json": components["schemas"]["CompanyDto"][];
+                        "text/json": components["schemas"]["CompanyDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CompanyDto"];
+                        "application/json": components["schemas"]["CompanyDto"];
+                        "text/json": components["schemas"]["CompanyDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateCompanyRequest"];
+                    "text/json": components["schemas"]["UpdateCompanyRequest"];
+                    "application/*+json": components["schemas"]["UpdateCompanyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CompanyDto"];
+                        "application/json": components["schemas"]["CompanyDto"];
+                        "text/json": components["schemas"]["CompanyDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contacts": {
         parameters: {
             query?: never;
@@ -397,6 +545,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{dealId}/draft-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DraftEmailRequest"];
+                    "text/json": components["schemas"]["DraftEmailRequest"];
+                    "application/*+json": components["schemas"]["DraftEmailRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["EmailDraftResponse"];
+                        "application/json": components["schemas"]["EmailDraftResponse"];
+                        "text/json": components["schemas"]["EmailDraftResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{dealId}": {
         parameters: {
             query?: never;
@@ -428,8 +621,115 @@ export interface paths {
                 };
             };
         };
-        put?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateDealRequest"];
+                    "text/json": components["schemas"]["UpdateDealRequest"];
+                    "application/*+json": components["schemas"]["UpdateDealRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DealDetailDto"];
+                        "application/json": components["schemas"]["DealDetailDto"];
+                        "text/json": components["schemas"]["DealDetailDto"];
+                    };
+                };
+            };
+        };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{dealId}/summarize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SummarizeDealResponse"];
+                        "application/json": components["schemas"]["SummarizeDealResponse"];
+                        "text/json": components["schemas"]["SummarizeDealResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{dealId}/next-best-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NextBestActionResponse"];
+                        "application/json": components["schemas"]["NextBestActionResponse"];
+                        "text/json": components["schemas"]["NextBestActionResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -472,6 +772,139 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    dealId?: string;
+                    contactId?: string;
+                    companyId?: string;
+                    includeCompleted?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaskDto"][];
+                        "application/json": components["schemas"]["TaskDto"][];
+                        "text/json": components["schemas"]["TaskDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateTaskRequest"];
+                    "text/json": components["schemas"]["CreateTaskRequest"];
+                    "application/*+json": components["schemas"]["CreateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaskDto"];
+                        "application/json": components["schemas"]["TaskDto"];
+                        "text/json": components["schemas"]["TaskDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateTaskRequest"];
+                    "text/json": components["schemas"]["UpdateTaskRequest"];
+                    "application/*+json": components["schemas"]["UpdateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaskDto"];
+                        "application/json": components["schemas"]["TaskDto"];
+                        "text/json": components["schemas"]["TaskDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -552,6 +985,12 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        CompanyDto: {
+            id: string;
+            name: string;
+            domain: null | string;
+            customFields: Record<string, never>;
+        };
         ContactDto: {
             id: string;
             firstName: null | string;
@@ -578,6 +1017,14 @@ export interface components {
             /** Format: int32 */
             order: number | string;
         };
+        CreateTaskRequest: {
+            title: string;
+            /** Format: date-time */
+            dueAt: null | string;
+            contactId: null | string;
+            companyId: null | string;
+            dealId: null | string;
+        };
         DealCardDto: {
             id: string;
             title: string;
@@ -595,11 +1042,24 @@ export interface components {
             /** Format: int32 */
             amountCents: null | number | string;
             currency: null | string;
+            forecastCategory: string;
             /** Format: int32 */
             aiScore: null | number | string;
             aiScoreRationale: null | string;
+            aiSummary: null | string;
+            /** Format: date-time */
+            aiSummarizedAt: null | string;
+            /** Format: int32 */
+            activitiesSinceSummary: number | string;
             contactNames: string[];
             activities: components["schemas"]["ActivityDto"][];
+            customFields: Record<string, never>;
+        };
+        DraftEmailRequest: {
+            instruction: null | string;
+        };
+        EmailDraftResponse: {
+            jobId: string;
         };
         FieldDefinitionDto: {
             id: string;
@@ -612,9 +1072,13 @@ export interface components {
             /** Format: int32 */
             order: number | string;
         };
+        GoogleExchangeRequest: {
+            code: string;
+        };
         JobStatusResponse: {
             status: string;
             lastError: null | string;
+            result: null | string;
         };
         LogActivityRequest: {
             type: string;
@@ -632,6 +1096,9 @@ export interface components {
         MoveDealRequest: {
             stageId: string;
         };
+        NextBestActionResponse: {
+            jobId: string;
+        };
         PipelineBoardDto: {
             id: string;
             name: string;
@@ -645,12 +1112,45 @@ export interface components {
             name: string;
             deals: components["schemas"]["DealCardDto"][];
         };
+        SummarizeDealResponse: {
+            jobId: string;
+        };
+        TaskDto: {
+            id: string;
+            title: string;
+            /** Format: date-time */
+            dueAt: null | string;
+            /** Format: date-time */
+            completedAt: null | string;
+            aiSuggested: boolean;
+            contactId: null | string;
+            companyId: null | string;
+            dealId: null | string;
+        };
+        UpdateCompanyRequest: {
+            name: string;
+            domain: null | string;
+            customFields: null | Record<string, never>;
+        };
+        UpdateDealRequest: {
+            /** Format: int32 */
+            amountCents: null | number | string;
+            currency: null | string;
+            forecastCategory: string;
+            customFields: null | Record<string, never>;
+        };
         UpdateFieldDefinitionRequest: {
             label: string;
             options: null | string[];
             required: boolean;
             /** Format: int32 */
             order: number | string;
+        };
+        UpdateTaskRequest: {
+            title: string;
+            /** Format: date-time */
+            dueAt: null | string;
+            completed: boolean;
         };
         UpdateWorkspaceSettingsRequest: {
             terminology: null | Record<string, never>;

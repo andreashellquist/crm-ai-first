@@ -14,6 +14,10 @@ public class Job
     public DateTime RunAt { get; set; } = DateTime.UtcNow;
     public DateTime? LockedAt { get; set; }
     public string? LastError { get; set; }
+    // jsonb text — for job types whose output has nowhere else to live (e.g.
+    // an email draft isn't a field on any entity, unlike deal scoring which
+    // writes onto Deal). Null for job types that persist their own result.
+    public string? Result { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

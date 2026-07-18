@@ -69,6 +69,64 @@ public class PipelineControllerTests(CrmApiFactory factory) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task UpdateDeal_Valid_Persists()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne, amountCents: 100_00);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PutAsJsonAsync($"/api/deals/{deal.Id}", new UpdateDealRequest(500_00, "EUR", "commit", null));
+
+        response.EnsureSuccessStatusCode();
+        var dto = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.Equal(500_00, dto!.AmountCents);
+        Assert.Equal("EUR", dto.Currency);
+        Assert.Equal("commit", dto.ForecastCategory);
+
+        var persisted = await WithDb(db => db.Deals.SingleAsync(d => d.Id == deal.Id));
+        Assert.Equal(500_00, persisted.AmountCents);
+    }
+
+    [Fact]
+    public async Task UpdateDeal_InvalidForecastCategory_ReturnsBadRequest()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PutAsJsonAsync($"/api/deals/{deal.Id}", new UpdateDealRequest(null, null, "made-up-category", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateDeal_NegativeAmount_ReturnsBadRequest()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PutAsJsonAsync($"/api/deals/{deal.Id}", new UpdateDealRequest(-100, null, "pipeline", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateDeal_ForAnotherWorkspacesDeal_ReturnsNotFound()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(owner.Workspace, owner.Pipeline, owner.StageOne, amountCents: 100_00);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await intruder.Client.PutAsJsonAsync($"/api/deals/{deal.Id}", new UpdateDealRequest(999_00, null, "pipeline", null));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var persisted = await WithDb(db => db.Deals.SingleAsync(d => d.Id == deal.Id));
+        Assert.Equal(100_00, persisted.AmountCents);
+    }
+
+    [Fact]
     public async Task LogActivity_WithInvalidType_ReturnsBadRequest()
     {
         var ws = await SeedWorkspaceAsync();

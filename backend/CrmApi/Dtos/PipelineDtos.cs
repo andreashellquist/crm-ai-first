@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace CrmApi.Dtos;
 
 public record PipelineBoardDto(string Id, string Name, List<StageDto> Stages);
@@ -23,14 +25,36 @@ public record DealDetailDto(
     string StageName,
     int? AmountCents,
     string? Currency,
+    string ForecastCategory,
     int? AiScore,
     string? AiScoreRationale,
+    string? AiSummary,
+    DateTime? AiSummarizedAt,
+    int ActivitiesSinceSummary,
     List<string> ContactNames,
-    List<ActivityDto> Activities
+    List<ActivityDto> Activities,
+    Dictionary<string, JsonElement> CustomFields
+);
+
+public record UpdateDealRequest(
+    int? AmountCents,
+    string? Currency,
+    string ForecastCategory,
+    Dictionary<string, JsonElement>? CustomFields
 );
 
 public record ActivityDto(string Id, string Type, string? Body, DateTime CreatedAt);
 
 public record LogActivityRequest(string Type, string Body);
 
-public record JobStatusResponse(string Status, string? LastError);
+public record JobStatusResponse(string Status, string? LastError, string? Result);
+
+public record DraftEmailRequest(string? Instruction);
+
+public record EmailDraftResponse(string JobId);
+
+public record SummarizeDealResponse(string JobId);
+
+public record NextBestActionResponse(string JobId);
+
+public record NextBestActionSuggestionDto(string Action, string Reasoning, string Confidence);

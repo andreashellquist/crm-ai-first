@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { requireWorkspace } from "@/lib/workspace";
 import { formatAmount } from "@/lib/money";
 import { LogActivityForm } from "./log-activity-form";
+import { DraftEmail } from "./draft-email";
+import { DealSummary } from "./deal-summary";
+import { NextBestAction } from "./next-best-action";
 
 const ACTIVITY_LABELS: Record<string, string> = {
   call: "Call",
@@ -43,6 +46,13 @@ export default async function DealDetailPage({
         </div>
       ) : null}
 
+      <DealSummary
+        dealId={deal.id}
+        summary={deal.aiSummary ?? null}
+        summarizedAt={deal.aiSummarizedAt ?? null}
+        activitiesSinceSummary={Number(deal.activitiesSinceSummary)}
+      />
+
       {deal.contactNames.length > 0 ? (
         <div>
           <h2 className="text-sm font-semibold text-neutral-700">Contacts</h2>
@@ -53,6 +63,10 @@ export default async function DealDetailPage({
           </ul>
         </div>
       ) : null}
+
+      <NextBestAction dealId={deal.id} />
+
+      <DraftEmail dealId={deal.id} />
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-neutral-700">Log activity</h2>

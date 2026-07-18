@@ -89,7 +89,11 @@ builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<JobQueueService>();
 builder.Services.AddScoped<DealScoringService>();
+builder.Services.AddScoped<EmailDraftingService>();
+builder.Services.AddScoped<SummarizationService>();
+builder.Services.AddScoped<NextBestActionService>();
 builder.Services.AddSingleton<IAnthropicMessagesClient, AnthropicMessagesClient>();
+builder.Services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>();
 builder.Services.AddHostedService<JobWorker>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -126,6 +130,11 @@ if (args.Contains("seed"))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // Applies migrations first so this command is a self-sufficient
+    // bootstrap for a fresh database (local dev, e2e/CI) — no separate
+    // `dotnet ef database update` step needed. CrmApiFactory does the same
+    // for the xUnit test database.
+    await db.Database.MigrateAsync();
     await Seed.RunAsync(db);
     return;
 }
@@ -134,6 +143,10 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+// Anonymous — used as the Playwright webServer readiness probe (e2e/playwright.config.ts)
+// and generally useful as an uptime check; carries no data worth authenticating.
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.UseAuthentication();
 

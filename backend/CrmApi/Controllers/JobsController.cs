@@ -19,6 +19,6 @@ public class JobsController(AppDbContext db, CurrentUser current) : ControllerBa
         // workspace's job status.
         var job = await db.Jobs.FirstOrDefaultAsync(j => j.Id == jobId && j.WorkspaceId == current.WorkspaceId);
         if (job is null) return NotFound();
-        return Ok(new JobStatusResponse(job.Status, job.LastError));
+        return Ok(new JobStatusResponse(job.Status, job.LastError, job.Result));
     }
 }

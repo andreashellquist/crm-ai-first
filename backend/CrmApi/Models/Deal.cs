@@ -23,10 +23,20 @@ public class Deal
     public string? AiScoreSignals { get; set; }
     public DateTime? AiScoredAt { get; set; }
 
+    // AI deal/activity summary — cached (summarize-on-read, not on every
+    // page load) and updated incrementally: SummarizationService only sends
+    // Claude the activities logged after AiSummarizedAt plus the prior
+    // summary text, folding them in, rather than re-summarizing the whole
+    // history each time. See SummarizationService and the ai-features-architect
+    // agent's "Summarization" pattern.
+    public string? AiSummary { get; set; }
+    public DateTime? AiSummarizedAt { get; set; }
+
     public Workspace? Workspace { get; set; }
     public Pipeline? Pipeline { get; set; }
     public Stage? Stage { get; set; }
     public Company? Company { get; set; }
     public List<Contact> Contacts { get; set; } = [];
     public List<Activity> Activities { get; set; } = [];
+    public List<TaskItem> Tasks { get; set; } = [];
 }

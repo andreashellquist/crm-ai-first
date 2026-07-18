@@ -69,3 +69,70 @@ jobs:
       - run: dotnet test backend/CrmApi.slnx --no-build --configuration Release
         env:
           TEST_DATABASE_URL: "Host=localhost;Port=5432;Database=crm_dotnet_test;Username=crm;Password=crm"
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    # Postgres uses the same crm/crm/crm_dotnet_dev credentials already
+    # checked into appsettings.Development.json (a dev-only, non-secret
+    # placeholder) — see the "Working conventions" note in CLAUDE.md and
+    # playwright.config.ts's webServer comment. That means no connection
+    # string override is needed anywhere in this job.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+          POSTGRES_DB: crm_dotnet_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - run: dotnet restore backend/CrmApi.slnx
+
+      # Debug (the default), not Release — matches the Debug binaries
+      # `dotnet run --no-build` (in the `seed` step below and in
+      # playwright.config.ts's webServer) expects to find.
+      - run: dotnet build backend/CrmApi.slnx --no-restore
+
+      # Applies migrations and seeds the fixed demo user/workspace/deal that
+      # e2e/helpers.ts and every spec sign in as and assert against — see
+      # backend/CrmApi/Data/Seed.cs.
+      - run: dotnet run --project backend/CrmApi --no-build -- seed
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+
+      # playwright.config.ts's webServer starts both the .NET API and the
+      # Next.js dev server itself and waits for both to be healthy.
+      - run: pnpm exec playwright test
+        env:
+          API_BASE_URL: http://localhost:5194
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

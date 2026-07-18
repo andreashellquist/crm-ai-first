@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<WorkspaceSettings> WorkspaceSettings => Set<WorkspaceSettings>();
     public DbSet<FieldDefinition> FieldDefinitions => Set<FieldDefinition>();
+    public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,6 +119,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(f => new { f.WorkspaceId, f.EntityType, f.Key }).IsUnique();
             e.HasOne(f => f.Workspace).WithMany(w => w.FieldDefinitions)
                 .HasForeignKey(f => f.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskItem>(e =>
+        {
+            e.HasIndex(t => new { t.WorkspaceId, t.CompletedAt, t.DueAt }); // open-tasks queries
+            e.HasIndex(t => new { t.WorkspaceId, t.DealId });
+            e.HasIndex(t => new { t.WorkspaceId, t.ContactId });
+            e.HasOne(t => t.Workspace).WithMany(w => w.Tasks)
+                .HasForeignKey(t => t.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(t => t.Contact).WithMany(c => c.Tasks)
+                .HasForeignKey(t => t.ContactId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(t => t.Company).WithMany(c => c.Tasks)
+                .HasForeignKey(t => t.CompanyId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(t => t.Deal).WithMany(d => d.Tasks)
+                .HasForeignKey(t => t.DealId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

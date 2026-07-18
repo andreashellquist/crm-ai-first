@@ -36,11 +36,17 @@ more than in a typical "add a chatbot" feature.
 
 ## Feature patterns to reuse
 
+All four features below are implemented in `backend/CrmApi/Services/`, each
+injecting `IAnthropicMessagesClient` (never the SDK client directly — see
+`FakeAnthropicMessagesClient` in `qa-test-engineer`) and routed through the
+Postgres job queue rather than the request path:
+
 - **Lead/deal scoring** — deterministic-feeling but LLM-backed: give the model
   structured signals (engagement recency, deal size, activity count, stage
   velocity) plus recent activity text, ask for a 0-100 score *and* a short
   rationale via tool use (structured output), never a bare number with no
   explanation — sales reps won't trust a score they can't inspect.
+  (`DealScoringService`, single-turn forced tool call.)
 - **Email drafting** — retrieve the contact/deal's recent Activities, the sender's
   prior emails to that contact (for tone), and any explicit instruction from the
   user, then draft. Always a draft in an editable compose box, never auto-sent.
@@ -49,15 +55,27 @@ more than in a typical "add a chatbot" feature.
   `communication-consent-and-suppression` skill; the AI having "just" drafted
   it is not an exception to that gate, and the compose UI should surface a
   blocked-recipient reason rather than let the user discover it as a failed
-  send.
+  send. (`EmailDraftingService`, single-turn forced tool call. There is no
+  send capability in this app yet at all — Phase 2 per `docs/PRODUCT_SCOPE.md`
+  — so today this can only ever produce an editable draft for a human to
+  read/copy; the consent/suppression gate above applies once sending exists.)
 - **Summarization** — summarize on read (cached, invalidated on new Activity),
   not on every page load; long deal histories should get an incremental summary
   (summarize new activities + fold into prior summary) rather than re-summarizing
-  everything each time, both for cost and latency.
+  everything each time, both for cost and latency. (`SummarizationService`,
+  cached on `Deal.AiSummary`/`AiSummarizedAt`; a cache hit with zero new
+  activities since the last run returns without calling Claude at all.)
 - **Next-best-action** — a tool-use agent loop with read-only tools (get deal,
   list activities, get contact) plus a final "suggest_actions" tool that returns a
   structured list of {action, reasoning, confidence}. Keep it read-only; actions
   are suggestions, execution is a separate explicit user-confirmed step.
+  (`NextBestActionService` — manual loop, not the Tool Runner beta, per the
+  `claude-api` skill; `tool_choice` stays `auto` across turns so the model can
+  call zero or more read-only tools before the final one; each read-only tool
+  takes no model-supplied input and is scoped by closing over `dealId`/
+  `workspaceId`, so there's no ID for the model to substitute another
+  workspace's data in. Capped at `MaxTurns = 6`, surfacing a
+  `NextBestActionFailedException` if the model never calls `suggest_actions`.)
 - **RAG over CRM history** — for cross-record questions ("what have we discussed
   with Acme about pricing"), retrieve Activities scoped to workspace + relevant
   Company/Contact via a filtered vector or full-text search, not global semantic

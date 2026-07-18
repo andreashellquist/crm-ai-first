@@ -15,4 +15,5 @@ public class Company
     public List<Contact> Contacts { get; set; } = [];
     public List<Deal> Deals { get; set; } = [];
     public List<Activity> Activities { get; set; } = [];
+    public List<TaskItem> Tasks { get; set; } = [];
 }

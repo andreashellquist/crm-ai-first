@@ -7,85 +7,112 @@ the fallback, not the primary interface.
 
 ## Status
 
-Phase 0 walking skeleton is in place, now on a split frontend/backend architecture
-(see "Chosen stack" below): sign in, create a contact, work the pipeline board, log
-activities against a deal, backed by the ASP.NET Core API in `backend/CrmApi`. Auth
-is a dev-only email+password login for now — see `auth-security-expert` before
-adding real OAuth/enterprise auth.
+Phase 0 walking skeleton is complete and its gaps have been closed, on a split
+frontend/backend architecture (see "Chosen stack" below): sign in (dev-only
+email+password, plus a scaffolded-but-not-yet-configured Google OAuth path —
+see `auth-security-expert`), create a contact, work the pipeline board
+(drag-and-drop with a keyboard/screen-reader `<select>` fallback — same
+`handleMove` function underneath both), log activities and tasks against a
+deal, backed by the ASP.NET Core API in `backend/CrmApi`.
 
-Phase 1 has started: a Postgres-backed job queue (`backend/CrmApi/Services/JobWorker.cs`,
-runs as an in-process `BackgroundService`) takes AI calls off the request path, and
-deal scoring (`backend/CrmApi/Services/DealScoringService.cs`) is the first feature
-routed through it — the frontend enqueues, polls job status, and refreshes on
-completion rather than blocking. The `Activity` entity (call/email/meeting/note) is
-in, with a deal detail page to log and view them — deal scoring folds recent
-activity text into its signals.
+Phase 1 is well underway. A Postgres-backed job queue
+(`backend/CrmApi/Services/JobWorker.cs`, an in-process `BackgroundService`)
+takes every LLM call off the request path — the frontend enqueues, polls job
+status, and refreshes/renders on completion rather than blocking. Four AI
+features are routed through it, all covered in `ai-features-architect`:
 
-An xUnit test suite (`backend/CrmApi.Tests`) covers the backend — integration
-tests against a real test Postgres database via `WebApplicationFactory<Program>`,
-a fake `IAnthropicMessagesClient` for deterministic AI-call tests, and
-multi-tenant isolation tests as the highest-priority category (see
-`qa-test-engineer`). CI (`.github/workflows/ci.yml`) runs it, plus frontend
-lint/typecheck/build, on every push/PR.
+- **Deal scoring** (`DealScoringService`) — 0-100 score + rationale, single
+  forced tool call, folding in recent activity text and workspace-resolved
+  terminology.
+- **Email drafting** (`EmailDraftingService`) — grounded in the deal's recent
+  activities and primary contact; always lands in an editable compose box,
+  never auto-sent (there's no send capability in this app yet at all).
+- **Deal/activity summarization** (`SummarizationService`) — cached on
+  `Deal.AiSummary`/`AiSummarizedAt`, updated incrementally (only new
+  activities since the last summary are sent to Claude, folded into the prior
+  summary text) rather than re-summarizing the whole history each time.
+- **Next-best-action** (`NextBestActionService`) — a manual multi-turn
+  agentic tool-use loop (read-only tools scoped by closing over
+  `dealId`/`workspaceId`, capped at 6 turns) ending in a `suggest_actions`
+  tool call. Read-only by design: suggestions only, never an executed action.
 
-The remaining Phase 0 gaps have been closed:
+The `Activity` (call/email/meeting/note) and `TaskItem` entities are in, both
+polymorphic over Contact/Company/Deal, with a deal detail page to log/view
+activities and Company/Deal update endpoints (`CompaniesController`,
+`PipelineController.UpdateDeal`) wired to `CustomFieldValidator` alongside
+Contact creation.
 
-- **Workspace-customization scaffolding** (`WorkspaceSettings`, `FieldDefinition`)
-  is built per the `workspace-customization` skill — `WorkspaceSettingsController`
-  (terminology overrides, enabled modules) and `FieldDefinitionsController`
-  (per-workspace custom field definitions, scoped by entity type), with
-  `CustomFieldValidator` enforcing them on write and `TerminologyResolver`
-  resolving display/prompt text with a canonical-term fallback. Contact creation
-  is the one entity wired to accept `customFields` today (`ContactsController`);
-  Company/Deal have the `CustomFields` column and validator ready but no create/
-  update endpoint yet to hang it off — see "Notably not yet built" below.
-- **RBAC enforcement**: `RequireRoleAttribute` (`backend/CrmApi/Authorization`)
-  checks `CurrentUser.Role` at the point of mutation, applied to the
-  workspace-settings and field-definition write endpoints (owner/admin only).
-  Building and testing this surfaced a real bug worth knowing about: ASP.NET
-  Core's JWT handler remaps short claim names (including `"role"` and `"sub"`)
-  to legacy long-form URIs by default, which silently broke `CurrentUser.Role`/
-  `UserId` — fixed via `options.MapInboundClaims = false` on the JWT bearer
-  handler in `Program.cs`. Custom claims like `"workspaceId"` were never
-  affected, which is why isolation tests didn't catch it.
-- **Baseline observability**: OpenTelemetry tracing (ASP.NET Core + HttpClient +
-  Npgsql instrumentation, console exporter in dev, OTLP if `Observability:OtlpEndpoint`
-  is configured), structured JSON console logs in Production with
-  `WorkspaceId`/`TraceId` log-scope enrichment, and Sentry error tracking wired
-  but dormant without a `Sentry:Dsn` — see `devops-observability-expert`. Also
-  caught a real bug: Sentry's SDK throws at startup on a `null` Dsn (only an
-  explicit empty string is a documented no-op), which bit the first Production-mode
-  boot before being coerced with `?? ""`.
-- **AI eval harness** (`backend/CrmApi.Eval`) runs a small fixed set of deal-scoring
-  scenarios against the real Claude API for human review before prompt/tool-schema
-  changes — deliberately outside `dotnet test`/CI since it costs real API calls.
-  Deal scoring's prompt now resolves workspace terminology (e.g. "deal" → "Listing")
-  per `ai-features-architect`'s vertical-agnostic-prompts guidance — the first AI
-  feature to actually consume the new workspace-customization data.
+Workspace-customization scaffolding (`WorkspaceSettings`, `FieldDefinition`)
+is built per the `workspace-customization` skill — `WorkspaceSettingsController`
+(terminology overrides, enabled modules) and `FieldDefinitionsController`
+(per-workspace custom field definitions, scoped by entity type), with
+`CustomFieldValidator` enforcing them on write and `TerminologyResolver`
+resolving display/prompt text with a canonical-term fallback, consumed by
+every AI feature's prompt text above.
 
-Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional bar,
-phased roadmap, and the explicit assumptions made to resolve an intentionally vague
-brief — is still ahead. Read it before starting a new feature area; it says what
-phase the feature belongs to and which expert agent in `.claude/agents/` owns it.
-Notably not yet built: Task entity, drag-and-drop on the pipeline board, generic
-Company/Deal update endpoints (so their custom fields have somewhere to attach),
-drafting/summarization/next-best-action, real OAuth, and Playwright e2e in CI (it
-runs manually for now — see `qa-test-engineer`).
+RBAC enforcement (`RequireRoleAttribute`, `backend/CrmApi/Authorization`)
+checks `CurrentUser.Role` at the point of mutation, applied to the
+workspace-settings and field-definition write endpoints (owner/admin only).
+Building and testing this surfaced a real bug worth knowing about: ASP.NET
+Core's JWT handler remaps short claim names (including `"role"` and `"sub"`)
+to legacy long-form URIs by default, which silently broke `CurrentUser.Role`/
+`UserId` — fixed via `options.MapInboundClaims = false` on the JWT bearer
+handler in `Program.cs`. Custom claims like `"workspaceId"` were never
+affected, which is why isolation tests didn't catch it.
+
+Baseline observability is in: OpenTelemetry tracing (ASP.NET Core + HttpClient
++ Npgsql instrumentation, console exporter in dev, OTLP if
+`Observability:OtlpEndpoint` is configured), structured JSON console logs in
+Production with `WorkspaceId`/`TraceId` log-scope enrichment, and Sentry error
+tracking wired but dormant without a `Sentry:Dsn` — see
+`devops-observability-expert`. An anonymous `GET /health` endpoint exists,
+used as the e2e suite's readiness probe and generally as an uptime check.
+
+An AI eval harness (`backend/CrmApi.Eval`) runs a small fixed set of
+deal-scoring scenarios against the real Claude API for human review before
+prompt/tool-schema changes — deliberately outside `dotnet test`/CI since it
+costs real API calls.
+
+**Testing is two-layered and both layers run in CI** (`.github/workflows/ci.yml`,
+three jobs, all blocking — see `qa-test-engineer`):
+
+- An xUnit suite (`backend/CrmApi.Tests`) covers the backend — integration
+  tests against a real test Postgres database via `WebApplicationFactory<Program>`,
+  a fake `IAnthropicMessagesClient` for deterministic AI-call tests, and
+  multi-tenant isolation tests as the highest-priority category.
+- A Playwright e2e suite (`e2e/`) covers the golden-path user flows — sign in,
+  create a contact, move a deal through the pipeline, log an activity, and a
+  reachability smoke test for each AI feature's request/poll/render loop
+  (content assertions belong in the xUnit layer, not here — CI has no
+  `ANTHROPIC_API_KEY`). `playwright.config.ts`'s `webServer` boots both apps
+  against a seeded dev database (`dotnet run --project backend/CrmApi -- seed`,
+  which now also applies migrations, making it a self-sufficient bootstrap for
+  a fresh database).
+
+Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
+bar, phased roadmap, and the explicit assumptions made to resolve an
+intentionally vague brief — is still ahead. Read it before starting a new
+feature area; it says what phase the feature belongs to and which expert
+agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
+credentials (the Google flow is fully wired end to end but
+`GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
+any actual email/calendar send capability, RAG over CRM history, and
+enterprise auth (SSO/SAML/SCIM).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
 below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
 `backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
-`devops-observability-expert`, `qa-test-engineer`, and `workspace-customization`
-have been updated for the new stack. Skills further from the migration's blast
-radius (`csv-import-dedupe`, `pipeline-kanban-board`, `reporting-read-models`,
-`public-api-and-webhooks`, `notifications-and-digests`, `i18n-currency-timezone`,
-`communication-consent-and-suppression`) still show Prisma/TypeScript-flavored
-schema snippets and code examples — the *patterns and conventions* in them
-(multi-tenancy, soft deletes, tool-calling discipline, etc.) still apply, but any
-literal code needs translating to EF Core/C#. Update a skill's code the next time
-you touch the feature area it covers, rather than treating this as a blocking
-backlog item.
+`devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`, and
+`workspace-customization` have been updated for the new stack. Skills further
+from the migration's blast radius (`csv-import-dedupe`, `pipeline-kanban-board`,
+`reporting-read-models`, `public-api-and-webhooks`, `notifications-and-digests`,
+`i18n-currency-timezone`, `communication-consent-and-suppression`) still show
+Prisma/TypeScript-flavored schema snippets and code examples — the *patterns
+and conventions* in them (multi-tenancy, soft deletes, tool-calling
+discipline, etc.) still apply, but any literal code needs translating to EF
+Core/C#. Update a skill's code the next time you touch the feature area it
+covers, rather than treating this as a blocking backlog item.
 
 ## Chosen stack
 
@@ -135,9 +162,10 @@ requirements turn out to need something these don't fit.
   tests via `WebApplicationFactory<Program>` against a real test Postgres
   database, a fake `IAnthropicMessagesClient` for AI-call tests, multi-tenant
   isolation as the highest-priority category), Playwright for e2e against the
-  frontend (not yet wired into CI — see `qa-test-engineer`). CI
-  (`.github/workflows/ci.yml`) runs the xUnit suite plus frontend
-  lint/typecheck/build on every push/PR.
+  frontend (`e2e/` — golden-path flows plus AI-feature reachability smoke
+  tests; see `qa-test-engineer`). CI (`.github/workflows/ci.yml`) runs both,
+  plus frontend lint/typecheck/build, on every push/PR — three jobs, all
+  blocking.
 - **Validation**: model validation in ASP.NET Core controllers (`ModelState`,
   manual checks) rather than a shared client/server schema library — the frontend
   no longer duplicates validation logic; it forwards requests and surfaces the

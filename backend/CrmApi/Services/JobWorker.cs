@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 namespace CrmApi.Services;
 
 record ScoreDealPayload(string DealId, string WorkspaceId);
+record DraftEmailPayload(string DealId, string WorkspaceId, string? Instruction);
+record SummarizeDealPayload(string DealId, string WorkspaceId);
+record NextBestActionPayload(string DealId, string WorkspaceId);
 
 // Runs in-process as a hosted service for local dev / a dedicated deployment.
 // ProcessBatchAsync is deliberately the unit both this loop and a future
@@ -22,7 +25,19 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
     // avoids that footgun.
     private static readonly JsonSerializerOptions PayloadOptions = new() { PropertyNameCaseInsensitive = true };
 
-    private static readonly Dictionary<string, Func<IServiceProvider, Job, Task>> Handlers = new()
+    // Job.Result is read directly by the frontend as parsed JSON (see
+    // getDraftJobStatusAction/getNextBestActionJobStatusAction), which
+    // expects the same camelCase property names every controller-returned
+    // DTO uses — JsonSerializer.Serialize's own default is PascalCase
+    // (matching the C# record property names verbatim), which would silently
+    // mismatch every field on the frontend.
+    private static readonly JsonSerializerOptions ResultOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    // Handlers return an optional result payload (jsonb text) persisted to
+    // Job.Result — for job types with nowhere else to write their output
+    // (e.g. draft_email; score_deal returns null since it writes onto Deal
+    // directly, same as before this existed).
+    private static readonly Dictionary<string, Func<IServiceProvider, Job, Task<string?>>> Handlers = new()
     {
         ["score_deal"] = async (services, job) =>
         {
@@ -30,6 +45,31 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
             var payload = JsonSerializer.Deserialize<ScoreDealPayload>(job.Payload, PayloadOptions)
                 ?? throw new InvalidOperationException("Invalid score_deal payload");
             await scoring.ScoreDeal(payload.DealId, payload.WorkspaceId);
+            return null;
+        },
+        ["draft_email"] = async (services, job) =>
+        {
+            var drafting = services.GetRequiredService<EmailDraftingService>();
+            var payload = JsonSerializer.Deserialize<DraftEmailPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid draft_email payload");
+            var result = await drafting.DraftEmail(payload.DealId, payload.WorkspaceId, payload.Instruction);
+            return JsonSerializer.Serialize(result, ResultOptions);
+        },
+        ["summarize_deal"] = async (services, job) =>
+        {
+            var summarization = services.GetRequiredService<SummarizationService>();
+            var payload = JsonSerializer.Deserialize<SummarizeDealPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid summarize_deal payload");
+            await summarization.SummarizeDeal(payload.DealId, payload.WorkspaceId);
+            return null; // persisted onto Deal.AiSummary, same as score_deal
+        },
+        ["next_best_action"] = async (services, job) =>
+        {
+            var nextBestAction = services.GetRequiredService<NextBestActionService>();
+            var payload = JsonSerializer.Deserialize<NextBestActionPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid next_best_action payload");
+            var result = await nextBestAction.SuggestActions(payload.DealId, payload.WorkspaceId);
+            return JsonSerializer.Serialize(result, ResultOptions);
         },
     };
 
@@ -96,9 +136,11 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
                 if (!Handlers.TryGetValue(job.Type, out var handler))
                     throw new InvalidOperationException($"No handler registered for type \"{job.Type}\"");
 
-                await handler(scope.ServiceProvider, job);
+                var result = await handler(scope.ServiceProvider, job);
                 await db.Jobs.Where(j => j.Id == job.Id)
-                    .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, "succeeded"), ct);
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(j => j.Status, "succeeded")
+                        .SetProperty(j => j.Result, result), ct);
                 activity?.SetStatus(ActivityStatusCode.Ok);
                 logger.LogInformation(
                     "job_processed jobId={JobId} type={Type} outcome=succeeded durationMs={DurationMs}",

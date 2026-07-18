@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using CrmApi.Dtos;
+using CrmApi.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace CrmApi.Tests;
@@ -71,6 +73,106 @@ public class JobQueueIntegrationTests(CrmApiFactory factory) : IntegrationTestBa
         finally
         {
             Anthropic.NextException = null;
+        }
+    }
+
+    [Fact]
+    public async Task DraftEmailJob_OnSuccess_PersistsResultOnJob()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        Anthropic.NextResponse = _ => FakeAnthropicMessagesClient.DefaultDraftMessage("Quick follow-up", "Hi there, following up on our chat.");
+        try
+        {
+            var draftResponse = await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/draft-email", new DraftEmailRequest(null));
+            draftResponse.EnsureSuccessStatusCode();
+            var enqueued = await draftResponse.Content.ReadFromJsonAsync<EmailDraftResponse>();
+            Assert.NotNull(enqueued);
+
+            await ProcessAllPendingJobsAsync();
+
+            var statusResponse = await ws.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+            Assert.NotNull(statusResponse);
+            Assert.Equal("succeeded", statusResponse!.Status);
+            Assert.NotNull(statusResponse.Result);
+            // The frontend parses Job.Result as plain JSON expecting camelCase
+            // keys (getDraftJobStatusAction reads data.subject/data.body) — this
+            // is a case-sensitive check, not just a deserialize-anything check.
+            Assert.Contains("\"subject\":", statusResponse.Result);
+            Assert.Contains("\"body\":", statusResponse.Result);
+
+            var result = JsonSerializer.Deserialize<EmailDraftResult>(statusResponse.Result!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.Equal("Quick follow-up", result!.Subject);
+            Assert.Equal("Hi there, following up on our chat.", result.Body);
+        }
+        finally
+        {
+            Anthropic.NextResponse = null;
+        }
+    }
+
+    [Fact]
+    public async Task SummarizeDealJob_OnSuccess_UpdatesDealAiSummary()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        Anthropic.NextResponse = _ => FakeAnthropicMessagesClient.DefaultSummaryMessage("Fresh summary via the queue.");
+        try
+        {
+            var summarizeResponse = await ws.Client.PostAsync($"/api/deals/{deal.Id}/summarize", content: null);
+            summarizeResponse.EnsureSuccessStatusCode();
+            var enqueued = await summarizeResponse.Content.ReadFromJsonAsync<SummarizeDealResponse>();
+            Assert.NotNull(enqueued);
+
+            await ProcessAllPendingJobsAsync();
+
+            var statusResponse = await ws.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+            Assert.NotNull(statusResponse);
+            Assert.Equal("succeeded", statusResponse!.Status);
+
+            var persisted = await WithDb(db => db.Deals.SingleAsync(d => d.Id == deal.Id));
+            Assert.Equal("Fresh summary via the queue.", persisted.AiSummary);
+        }
+        finally
+        {
+            Anthropic.NextResponse = null;
+        }
+    }
+
+    [Fact]
+    public async Task NextBestActionJob_OnSuccess_PersistsResultOnJob()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        Anthropic.NextResponse = _ => FakeAnthropicMessagesClient.DefaultSuggestActionsMessage(
+            ("Send a follow-up email", "No recent contact in the last week.", "medium"));
+        try
+        {
+            var nbaResponse = await ws.Client.PostAsync($"/api/deals/{deal.Id}/next-best-action", content: null);
+            nbaResponse.EnsureSuccessStatusCode();
+            var enqueued = await nbaResponse.Content.ReadFromJsonAsync<NextBestActionResponse>();
+            Assert.NotNull(enqueued);
+
+            await ProcessAllPendingJobsAsync();
+
+            var statusResponse = await ws.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+            Assert.NotNull(statusResponse);
+            Assert.Equal("succeeded", statusResponse!.Status);
+            Assert.NotNull(statusResponse.Result);
+            // getNextBestActionJobStatusAction parses this as { suggestions: [...] } —
+            // a case-sensitive check that the payload is actually camelCase.
+            Assert.Contains("\"suggestions\":", statusResponse.Result);
+            Assert.Contains("Send a follow-up email", statusResponse.Result);
+        }
+        finally
+        {
+            Anthropic.NextResponse = null;
         }
     }
 }

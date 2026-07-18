@@ -28,6 +28,24 @@ frontend-owned auth library; if OAuth/SSO providers are added, they issue
 tokens the .NET API validates and re-issues its own JWT from, keeping the API
 as the single identity boundary.
 
+**Google OAuth is scaffolded, not yet live**: `IGoogleOAuthClient`/
+`GoogleOAuthClient` (authorization-code exchange + userinfo fetch) and
+`AuthController.GoogleExchange` (provisions a new `User` + `Workspace` +
+owner `WorkspaceMember` on first sign-in, or logs an existing one in, then
+issues the same JWT `AuthController.Login` does) are fully wired end to end
+and covered by `AuthControllerTests`, but `GoogleOAuth:ClientId`/`ClientSecret`
+are shipped blank in `appsettings.Development.json` — the flow throws a clear
+config error until real credentials are supplied, rather than failing silently
+or half-implementing the redirect. The frontend side
+(`src/app/api/auth/google/route.ts`, `.../callback/google/route.ts`) sets a
+`google_oauth_state` HttpOnly cookie for CSRF before redirecting to Google,
+and validates it on the callback before ever calling the backend exchange
+endpoint. `GoogleExchange` provisions the new user's `PasswordHash` as a real
+bcrypt hash of a random, unguessable value (never null/empty) — `PasswordHash`
+is `required` and `BCrypt.Verify` throws on a non-bcrypt-format string, so
+there's no "OAuth users have no password" special case to carry through the
+rest of the codebase.
+
 Every controller action on a tenant-scoped resource must resolve the caller's
 identity and workspace before doing anything — there is no "trust the
 client-sent workspaceId" path, whether the client is the browser or the

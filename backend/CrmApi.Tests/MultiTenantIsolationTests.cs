@@ -144,6 +144,57 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task DraftEmail_ForAnotherWorkspacesDeal_ReturnsNotFound()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+
+        var deal = TestData.Deal(owner.Workspace, owner.Pipeline, owner.StageOne);
+        await WithDb(async db =>
+        {
+            db.Deals.Add(deal);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await intruder.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/draft-email", new DraftEmailRequest(null));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SummarizeDeal_ForAnotherWorkspacesDeal_ReturnsNotFound()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+
+        var deal = TestData.Deal(owner.Workspace, owner.Pipeline, owner.StageOne);
+        await WithDb(async db =>
+        {
+            db.Deals.Add(deal);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await intruder.Client.PostAsync($"/api/deals/{deal.Id}/summarize", content: null);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task NextBestAction_ForAnotherWorkspacesDeal_ReturnsNotFound()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+
+        var deal = TestData.Deal(owner.Workspace, owner.Pipeline, owner.StageOne);
+        await WithDb(async db =>
+        {
+            db.Deals.Add(deal);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await intruder.Client.PostAsync($"/api/deals/{deal.Id}/next-best-action", content: null);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task JobStatus_ForAnotherWorkspacesJob_ReturnsNotFound()
     {
         var owner = await SeedWorkspaceAsync();

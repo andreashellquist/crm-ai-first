@@ -15,6 +15,7 @@ public abstract class IntegrationTestBase(CrmApiFactory factory)
 {
     protected CrmApiFactory Factory { get; } = factory;
     protected FakeAnthropicMessagesClient Anthropic => Factory.Anthropic;
+    protected FakeGoogleOAuthClient GoogleOAuth => Factory.GoogleOAuth;
 
     protected Task WithDb(Func<AppDbContext, Task> action) => WithDb(async db =>
     {

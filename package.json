@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "gen:api-types": "openapi-typescript backend/openapi.json -o src/lib/api/schema.d.ts"
+    "gen:api-types": "openapi-typescript backend/openapi.json -o src/lib/api/schema.d.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

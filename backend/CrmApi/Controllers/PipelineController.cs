@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CrmApi.Data;
 using CrmApi.Dtos;
 using CrmApi.Models;
@@ -14,6 +15,7 @@ namespace CrmApi.Controllers;
 public class PipelineController(AppDbContext db, CurrentUser current) : ControllerBase
 {
     private static readonly string[] ValidActivityTypes = ["call", "email", "meeting", "note"];
+    private static readonly string[] ValidForecastCategories = ["pipeline", "best_case", "commit", "closed"];
 
     [HttpGet("pipeline")]
     public async Task<ActionResult<PipelineBoardDto>> GetBoard()
@@ -71,6 +73,19 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
         return Ok(new ScoreDealResponse(jobId));
     }
 
+    [HttpPost("deals/{dealId}/draft-email")]
+    public async Task<ActionResult<EmailDraftResponse>> DraftEmail(string dealId, DraftEmailRequest request, [FromServices] JobQueueService queue)
+    {
+        var deal = await db.Deals.FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId);
+        if (deal is null) return NotFound();
+
+        var jobId = await queue.Enqueue(
+            "draft_email",
+            new { dealId = deal.Id, workspaceId = current.WorkspaceId, instruction = request.Instruction },
+            current.WorkspaceId);
+        return Ok(new EmailDraftResponse(jobId));
+    }
+
     [HttpGet("deals/{dealId}")]
     public async Task<ActionResult<DealDetailDto>> GetDeal(string dealId)
     {
@@ -81,19 +96,90 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt))
             .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
         if (deal is null) return NotFound();
+        return Ok(ToDealDetailDto(deal));
+    }
 
-        var dto = new DealDetailDto(
+    [HttpPost("deals/{dealId}/summarize")]
+    public async Task<ActionResult<SummarizeDealResponse>> SummarizeDeal(string dealId, [FromServices] JobQueueService queue)
+    {
+        var deal = await db.Deals.FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId);
+        if (deal is null) return NotFound();
+
+        var jobId = await queue.Enqueue("summarize_deal", new { dealId = deal.Id, workspaceId = current.WorkspaceId }, current.WorkspaceId);
+        return Ok(new SummarizeDealResponse(jobId));
+    }
+
+    [HttpPost("deals/{dealId}/next-best-action")]
+    public async Task<ActionResult<NextBestActionResponse>> NextBestAction(string dealId, [FromServices] JobQueueService queue)
+    {
+        var deal = await db.Deals.FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId);
+        if (deal is null) return NotFound();
+
+        var jobId = await queue.Enqueue("next_best_action", new { dealId = deal.Id, workspaceId = current.WorkspaceId }, current.WorkspaceId);
+        return Ok(new NextBestActionResponse(jobId));
+    }
+
+    [HttpPut("deals/{dealId}")]
+    public async Task<ActionResult<DealDetailDto>> UpdateDeal(string dealId, UpdateDealRequest request)
+    {
+        if (!ValidForecastCategories.Contains(request.ForecastCategory))
+            return BadRequest("Invalid forecast category");
+        if (request.AmountCents is < 0)
+            return BadRequest("Amount cannot be negative");
+
+        var deal = await db.Deals
+            .Include(d => d.Stage)
+            .Include(d => d.Company)
+            .Include(d => d.Contacts)
+            .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt))
+            .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
+        if (deal is null) return NotFound();
+
+        var fieldDefs = await db.FieldDefinitions
+            .Where(f => f.WorkspaceId == current.WorkspaceId && f.EntityType == "deal")
+            .ToListAsync();
+        string customFields;
+        try
+        {
+            customFields = CustomFieldValidator.ValidateAndSerialize(fieldDefs, request.CustomFields);
+        }
+        catch (CustomFieldValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        deal.AmountCents = request.AmountCents;
+        deal.Currency = request.Currency;
+        deal.ForecastCategory = request.ForecastCategory;
+        deal.CustomFields = customFields;
+        deal.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return Ok(ToDealDetailDto(deal));
+    }
+
+    private static DealDetailDto ToDealDetailDto(Deal deal)
+    {
+        var activitiesSinceSummary = deal.AiSummarizedAt is { } summarizedAt
+            ? deal.Activities.Count(a => a.CreatedAt > summarizedAt)
+            : deal.Activities.Count;
+
+        return new DealDetailDto(
             deal.Id,
             deal.Company?.Name ?? "Untitled deal",
             deal.Stage!.Name,
             deal.AmountCents,
             deal.Currency,
+            deal.ForecastCategory,
             deal.AiScore,
             deal.AiScoreRationale,
+            deal.AiSummary,
+            deal.AiSummarizedAt,
+            activitiesSinceSummary,
             deal.Contacts.Select(c => string.Join(" ", new[] { c.FirstName, c.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)))).ToList(),
-            deal.Activities.Select(a => new ActivityDto(a.Id, a.Type, a.Body, a.CreatedAt)).ToList()
+            deal.Activities.Select(a => new ActivityDto(a.Id, a.Type, a.Body, a.CreatedAt)).ToList(),
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(deal.CustomFields) ?? []
         );
-        return Ok(dto);
     }
 
     [HttpPost("deals/{dealId}/activities")]
