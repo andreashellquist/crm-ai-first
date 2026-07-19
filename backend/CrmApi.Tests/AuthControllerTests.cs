@@ -133,4 +133,114 @@ public class AuthControllerTests(CrmApiFactory factory) : IntegrationTestBase(fa
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GoogleExchange_NewUser_ProvisionsAWorkingDefaultPipeline()
+    {
+        // Regression test for the gap this session closed: first-time OAuth
+        // sign-in used to create a bare Workspace with no Pipeline/Stage
+        // rows at all, which would break the pipeline board immediately.
+        var email = $"{Guid.NewGuid():N}@gmail.example";
+        GoogleOAuth.NextUserInfo = new GoogleUserInfo("google-sub-4", email, true, "Pipeline Checker");
+
+        var client = Factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/google/exchange", new GoogleExchangeRequest("fake-code"));
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+
+        var pipeline = await WithDb(db => db.Pipelines.SingleAsync(p => p.WorkspaceId == body!.WorkspaceId && p.IsDefault));
+        var stageCount = await WithDb(db => db.Stages.CountAsync(s => s.PipelineId == pipeline.Id));
+        Assert.Equal(6, stageCount);
+        var settings = await WithDb(db => db.WorkspaceSettings.SingleAsync(s => s.WorkspaceId == body!.WorkspaceId));
+        Assert.Equal("{}", settings.Terminology);
+    }
+
+    [Fact]
+    public async Task Register_ValidRequest_CreatesUserAndProvisionsChosenTemplate()
+    {
+        var email = $"{Guid.NewGuid():N}@newco.example";
+        var request = new RegisterRequest(email, "a-strong-password", "New Owner", "New Co", "real-estate");
+
+        var client = Factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register", request);
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        Assert.NotNull(body);
+        Assert.False(string.IsNullOrWhiteSpace(body!.Token));
+        Assert.Equal("New Co", body.WorkspaceName);
+
+        var user = await WithDb(db => db.Users.SingleAsync(u => u.Email == email));
+        Assert.Equal("New Owner", user.Name);
+        var membership = await WithDb(db => db.WorkspaceMembers.SingleAsync(m => m.UserId == user.Id));
+        Assert.Equal("owner", membership.Role);
+
+        var pipeline = await WithDb(db => db.Pipelines.SingleAsync(p => p.WorkspaceId == body.WorkspaceId && p.IsDefault));
+        Assert.Equal("Listings Pipeline", pipeline.Name);
+        var stageNames = await WithDb(db => db.Stages.Where(s => s.PipelineId == pipeline.Id).Select(s => s.Name).ToListAsync());
+        Assert.Contains("Under Contract", stageNames);
+
+        var settings = await WithDb(db => db.WorkspaceSettings.SingleAsync(s => s.WorkspaceId == body.WorkspaceId));
+        Assert.Contains("Listing", settings.Terminology);
+
+        var fieldKeys = await WithDb(db => db.FieldDefinitions
+            .Where(f => f.WorkspaceId == body.WorkspaceId && f.EntityType == "deal")
+            .Select(f => f.Key).ToListAsync());
+        Assert.Contains("bedrooms", fieldKeys);
+        Assert.Contains("mls_status", fieldKeys);
+    }
+
+    [Fact]
+    public async Task Register_DuplicateEmail_ReturnsConflict()
+    {
+        var existing = TestData.User();
+        await WithDb(async db =>
+        {
+            db.Users.Add(existing);
+            await db.SaveChangesAsync();
+        });
+
+        var client = Factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest(existing.Email, "a-strong-password", "Someone Else", "Some Workspace", VerticalTemplates.DefaultId));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_UnknownTemplate_ReturnsBadRequest()
+    {
+        var client = Factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest($"{Guid.NewGuid():N}@newco.example", "a-strong-password", "Name", "Workspace", "not-a-real-template"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_ShortPassword_ReturnsBadRequest()
+    {
+        var client = Factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest($"{Guid.NewGuid():N}@newco.example", "short", "Name", "Workspace", VerticalTemplates.DefaultId));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Templates_ReturnsAllThreeVerticalTemplates()
+    {
+        var client = Factory.CreateClient();
+        var response = await client.GetAsync("/api/auth/templates");
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<List<VerticalTemplateSummaryDto>>();
+        Assert.NotNull(body);
+        Assert.Equal(3, body!.Count);
+        var realEstate = body.Single(t => t.Id == "real-estate");
+        Assert.Equal("Listing", realEstate.DealTerm);
+        Assert.Equal("Listings", realEstate.DealTermPlural);
+        var saasSales = body.Single(t => t.Id == VerticalTemplates.DefaultId);
+        Assert.Equal("Deal", saasSales.DealTerm);
+    }
 }

@@ -80,6 +80,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["VerticalTemplateSummaryDto"][];
+                        "application/json": components["schemas"]["VerticalTemplateSummaryDto"][];
+                        "text/json": components["schemas"]["VerticalTemplateSummaryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegisterRequest"];
+                    "text/json": components["schemas"]["RegisterRequest"];
+                    "application/*+json": components["schemas"]["RegisterRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LoginResponse"];
+                        "application/json": components["schemas"]["LoginResponse"];
+                        "text/json": components["schemas"]["LoginResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/google/exchange": {
         parameters: {
             query?: never;
@@ -1684,6 +1764,13 @@ export interface components {
         RefreshReportsResponse: {
             jobId: string;
         };
+        RegisterRequest: {
+            email: string;
+            password: string;
+            name: string;
+            workspaceName: string;
+            templateId: string;
+        };
         ReportsResponse: {
             dealTerm: string;
             dealTermPlural: string;
@@ -1766,6 +1853,16 @@ export interface components {
         UpdateWorkspaceSettingsRequest: {
             terminology: null | Record<string, never>;
             enabledModules: null | string[];
+        };
+        VerticalTemplateSummaryDto: {
+            id: string;
+            name: string;
+            description: string;
+            dealTerm: string;
+            dealTermPlural: string;
+            companyTerm: string;
+            contactTerm: string;
+            stages: string[];
         };
         WorkspaceSettingsDto: {
             terminology: Record<string, never>;

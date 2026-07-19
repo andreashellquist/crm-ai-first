@@ -28,6 +28,19 @@ frontend-owned auth library; if OAuth/SSO providers are added, they issue
 tokens the .NET API validates and re-issues its own JWT from, keeping the API
 as the single identity boundary.
 
+**Real email+password signup exists**: `POST /api/auth/register`
+(`AuthController.Register`) creates the `User`/`Workspace`/owner
+`WorkspaceMember`, rejects a duplicate email with 409, and requires an
+8-character-minimum password — it's the `/signup` page's Server Action, the
+counterpart to the pre-existing `Login`. Both `Register` and
+`GoogleExchange`'s first-time-sign-in path provision the new workspace via
+`WorkspaceProvisioningService` (a chosen `VerticalTemplate` for `Register`,
+the generic default for `GoogleExchange`, which has no template-picker step)
+— see the `workspace-customization` skill §3. This isn't an auth surface
+change so much as a note for whoever touches `AuthController` next: both
+paths now do more than mint a JWT, and both stay covered by
+`AuthControllerTests`.
+
 **Google OAuth is scaffolded, not yet live**: `IGoogleOAuthClient`/
 `GoogleOAuthClient` (authorization-code exchange + userinfo fetch) and
 `AuthController.GoogleExchange` (provisions a new `User` + `Workspace` +

@@ -151,6 +151,22 @@ table that doesn't exist (`Deal` only stores its *current* `StageId`, not a
 timestamped history of stage changes) — a real prerequisite gap, not a
 hidden scope cut.
 
+Phase 3's second sub-area, vertical starter templates, is also in: a real
+self-serve `POST /api/auth/register` (email+password+name+workspace name)
+now exists alongside login and Google OAuth, and it requires picking a
+starter template from `Services/VerticalTemplates.cs` (`saas-sales` — the
+generic default, `real-estate`, `recruiting`) rendered as a picker on
+`/signup`, fed by the public `GET /api/auth/templates`. Applying a template
+(`WorkspaceProvisioningService.ProvisionAsync`) creates the `Pipeline`+
+`Stage` rows, sets `WorkspaceSettings.Terminology`, and inserts the
+template's `FieldDefinition` rows in one call — see the
+`workspace-customization` skill §3 for the shape. This also closed a real,
+previously-shipping gap: `AuthController.GoogleExchange`'s first-time-sign-in
+path used to create a bare `Workspace` with no `Pipeline` at all (it now
+provisions the default template, since the OAuth flow has no template-picker
+step of its own) — a first-time Google sign-in would otherwise have landed
+on a completely broken pipeline board.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -163,9 +179,8 @@ auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
 `deal_assigned` notifications can exist), contact/company detail pages, deal
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression
-gating, billing), and the rest of Phase 3 (a real vertical-starter-kit
-onboarding flow, the first optional module shipped end-to-end, and an
-accessibility audit).
+gating, billing), and the rest of Phase 3 (the first optional module shipped
+end-to-end, and an accessibility audit).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"

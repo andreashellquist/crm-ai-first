@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { loginAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,13 @@ export function LoginForm() {
       >
         Sign in with Google
       </a>
+
+      <p className="text-center text-xs text-neutral-500">
+        New here?{" "}
+        <Link href="/signup" className="underline">
+          Create a workspace
+        </Link>
+      </p>
     </form>
   );
 }

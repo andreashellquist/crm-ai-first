@@ -15,13 +15,16 @@ the three-tier decision process (core field vs. custom field vs. module) this
 pattern implements, and `crm-data-model` for the underlying tables
 (`WorkspaceSettings`, `FieldDefinition`).
 
-**Built** (terminology overrides + custom fields, §1–2 below):
+**Built**: terminology overrides + custom fields (§1–2) —
 `Models/WorkspaceSettings.cs`, `Models/FieldDefinition.cs`,
 `Controllers/WorkspaceSettingsController.cs`,
 `Controllers/FieldDefinitionsController.cs`,
-`Services/TerminologyResolver.cs`, `Services/CustomFieldValidator.cs` in
-`backend/CrmApi`. **Not yet built**: vertical starter templates (§3) and
-optional modules (§4) — still describe the intended pattern below.
+`Services/TerminologyResolver.cs`, `Services/CustomFieldValidator.cs`; and
+vertical starter templates (§3) — `Services/VerticalTemplates.cs`,
+`Services/WorkspaceProvisioningService.cs`, `POST /api/auth/register`, the
+`/signup` template picker — all in `backend/CrmApi` (frontend at
+`src/app/signup`). **Not yet built**: optional modules (§4) — still
+describes the intended pattern below.
 
 ## 1. Terminology overrides
 
@@ -89,28 +92,59 @@ deploy.
 ## 3. Vertical starter templates
 
 A template is a static, in-repo data structure (not a database concept) applied
-once at workspace creation:
+once at workspace creation. Built in `Services/VerticalTemplates.cs`:
 
-```ts
-interface VerticalTemplate {
-  id: string; // "real-estate", "recruiting", "saas-sales", ...
-  name: string;
-  terminology: Record<string, { singular?: string; plural?: string; label?: string }>;
-  pipeline: { name: string; stages: { name: string; probability: number; isWon?: boolean; isLost?: boolean }[] };
-  fields: { entityType: string; key: string; label: string; fieldType: string; options?: string[] }[];
-  suggestedModules?: string[];
-}
+```csharp
+public record VerticalTemplateTerm(string? Singular = null, string? Plural = null, string? Label = null);
+public record VerticalTemplateStage(string Name, int Probability, bool IsWon = false, bool IsLost = false);
+public record VerticalTemplatePipeline(string Name, List<VerticalTemplateStage> Stages);
+public record VerticalTemplateField(string EntityType, string Key, string Label, string FieldType, List<string>? Options = null);
+
+public record VerticalTemplate(
+    string Id, // "saas-sales", "real-estate", "recruiting"
+    string Name,
+    string Description,
+    Dictionary<string, VerticalTemplateTerm> Terminology,
+    VerticalTemplatePipeline Pipeline,
+    List<VerticalTemplateField> Fields,
+    List<string>? SuggestedModules = null
+);
 ```
 
-Applying a template means: create one `Pipeline` + its `Stage` rows, insert the
-listed `FieldDefinition` rows, set `WorkspaceSettings.terminology`, and
-optionally enable modules. After that, it's ordinary workspace data — editable,
-deletable, no different from a workspace that configured everything by hand.
-Templates are a checklist a workspace picks at signup, not a runtime concept the
-app ever re-checks.
+Three templates ship today: `saas-sales` (`VerticalTemplates.DefaultId` — zero
+terminology overrides and zero custom fields, same stage names Data/Seed.cs
+has always used, so picking it is equivalent to "no customization"),
+`real-estate` (Listing/Property Owner terminology, a listing-intake-to-close
+pipeline, bedrooms/square-footage/MLS-status fields on the deal), and
+`recruiting` (Placement/Candidate/Client terminology, a sourced-to-placed
+pipeline, current-title/years-experience on the contact and role-level on the
+deal).
 
-Keep template definitions in one place (e.g. `lib/vertical-templates/`), one
-file per vertical, reviewed the way any other product content is.
+`WorkspaceProvisioningService.ProvisionAsync(workspaceId, templateId)` applies
+one: creates a `Pipeline` + its `Stage` rows, sets
+`WorkspaceSettings.Terminology`, and inserts the template's `FieldDefinition`
+rows, all in one call. After that, it's ordinary workspace data — editable,
+deletable, no different from a workspace that configured everything by hand.
+Templates are a checklist a workspace picks at signup, not a runtime concept
+the app ever re-checks.
+
+Two callers, both in `AuthController`: `POST /api/auth/register` (the real
+email+password signup flow — `/signup` renders a template picker fed by the
+public `GET /api/auth/templates`, lets the user pick one, and provisions it in
+the same request that creates the user/workspace) and `GoogleExchange`'s
+first-time-sign-in path, which has no template-picker step and defaults to
+`VerticalTemplates.DefaultId`. This closed a real gap: before
+`WorkspaceProvisioningService` existed, `GoogleExchange` created a bare
+`Workspace` with no `Pipeline` at all, which would have broken the pipeline
+board's `IsDefault` lookup on a first-time Google sign-in — see
+`MultiTenantIsolationTests`-adjacent regression test
+`GoogleExchange_NewUser_ProvisionsAWorkingDefaultPipeline` in
+`AuthControllerTests.cs`.
+
+Keep template definitions in one place (`Services/VerticalTemplates.cs`), one
+`VerticalTemplate` per vertical, reviewed the way any other product content
+is — adding a fourth vertical is adding one more record to `VerticalTemplates.All`,
+not a migration or a new code path.
 
 ## 4. Optional modules
 

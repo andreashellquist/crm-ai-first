@@ -71,6 +71,93 @@
         }
       }
     },
+    "/api/auth/templates": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VerticalTemplateSummaryDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VerticalTemplateSummaryDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VerticalTemplateSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/google/exchange": {
       "post": {
         "tags": [
@@ -2501,6 +2588,33 @@
           }
         }
       },
+      "RegisterRequest": {
+        "required": [
+          "email",
+          "password",
+          "name",
+          "workspaceName",
+          "templateId"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "workspaceName": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          }
+        }
+      },
       "ReportsResponse": {
         "required": [
           "dealTerm",
@@ -2874,6 +2988,48 @@
               "null",
               "array"
             ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "VerticalTemplateSummaryDto": {
+        "required": [
+          "id",
+          "name",
+          "description",
+          "dealTerm",
+          "dealTermPlural",
+          "companyTerm",
+          "contactTerm",
+          "stages"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dealTerm": {
+            "type": "string"
+          },
+          "dealTermPlural": {
+            "type": "string"
+          },
+          "companyTerm": {
+            "type": "string"
+          },
+          "contactTerm": {
+            "type": "string"
+          },
+          "stages": {
+            "type": "array",
             "items": {
               "type": "string"
             }
