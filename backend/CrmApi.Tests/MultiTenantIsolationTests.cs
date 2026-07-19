@@ -272,6 +272,24 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task Listing_ForAnotherWorkspacesDeal_ReturnsNotFoundEvenWithModuleEnabled()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        var ownerDeal = TestData.Deal(owner.Workspace, owner.Pipeline, owner.StageOne);
+        await WithDb(async db => { db.Deals.Add(ownerDeal); await db.SaveChangesAsync(); });
+
+        await owner.Client.PutAsJsonAsync("/api/workspace/settings", new UpdateWorkspaceSettingsRequest(null, ["listings"]));
+        await intruder.Client.PutAsJsonAsync("/api/workspace/settings", new UpdateWorkspaceSettingsRequest(null, ["listings"]));
+        var upsert = await owner.Client.PutAsJsonAsync($"/api/deals/{ownerDeal.Id}/listing",
+            new UpsertListingRequest("Owner's Agent", null, null, null));
+        upsert.EnsureSuccessStatusCode();
+
+        var response = await intruder.Client.GetAsync($"/api/deals/{ownerDeal.Id}/listing");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Reports_NeverReflectAnotherWorkspacesDeals()
     {
         var owner = await SeedWorkspaceAsync();

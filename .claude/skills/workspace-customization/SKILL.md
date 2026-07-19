@@ -19,12 +19,14 @@ pattern implements, and `crm-data-model` for the underlying tables
 `Models/WorkspaceSettings.cs`, `Models/FieldDefinition.cs`,
 `Controllers/WorkspaceSettingsController.cs`,
 `Controllers/FieldDefinitionsController.cs`,
-`Services/TerminologyResolver.cs`, `Services/CustomFieldValidator.cs`; and
+`Services/TerminologyResolver.cs`, `Services/CustomFieldValidator.cs`;
 vertical starter templates (§3) — `Services/VerticalTemplates.cs`,
 `Services/WorkspaceProvisioningService.cs`, `POST /api/auth/register`, the
-`/signup` template picker — all in `backend/CrmApi` (frontend at
-`src/app/signup`). **Not yet built**: optional modules (§4) — still
-describes the intended pattern below.
+`/signup` template picker; and the first optional module, real-estate
+listings (§4) — `Models/Listing.cs`, `Controllers/ListingsController.cs`,
+the `/settings` module toggle, and the Listing panel on the deal detail
+page. All in `backend/CrmApi` (frontend at `src/app/signup`,
+`src/app/(app)/settings`, `src/app/(app)/pipeline/[dealId]`).
 
 ## 1. Terminology overrides
 
@@ -153,10 +155,10 @@ For data that genuinely doesn't fit Contact/Company/Deal (e.g. a real-estate
 renewal date and coverage limits): a module is a self-contained set of tables +
 routes + components, gated on `WorkspaceSettings.enabledModules`.
 
-- A module's tables follow the exact same workspaceId/soft-delete/index
-  conventions as core tables (`database-schema-expert`) and typically FK to a
-  core `Deal`/`Contact`/`Company` rather than replacing it — a `Listing` extends
-  a `Deal`, it isn't a competing concept.
+- A module's tables follow the exact same workspaceId/index conventions as
+  core tables (`database-schema-expert`) and typically FK to a core
+  `Deal`/`Contact`/`Company` rather than replacing it — a `Listing` extends a
+  `Deal`, it isn't a competing concept.
 - Core flows (contacts, deals, pipeline, activities, tasks, AI features) must
   work correctly with **zero** modules enabled — a module adds capability, it's
   never a dependency of the core product.
@@ -164,6 +166,36 @@ routes + components, gated on `WorkspaceSettings.enabledModules`.
   requirement is actually just a custom field in disguise — modules are for
   genuinely distinct data shapes, not an easy escape hatch from the custom-field
   tier.
+
+**Reference implementation — `listings`**, real-estate's optional module.
+`Models/Listing.cs` FKs 1:1 to `Deal` (unique index on `DealId`, cascades on
+Deal delete) and holds structured fields the real-estate `VerticalTemplate`'s
+custom fields deliberately don't cover (listing agent, listing URL, open
+house time, commission percent) — bedrooms/square-footage/MLS-status stay
+`FieldDefinition` custom fields, since those are genuinely just freeform
+key/value data, not a reason to reach for a module.
+
+- `Controllers/ListingsController.cs` (`GET`/`PUT /api/deals/{dealId}/listing`)
+  checks `WorkspaceSettings.EnabledModules.Contains("listings")` before doing
+  anything else — 403 if the module is off, regardless of whether the Deal
+  exists, so a disabled module never leaks whether data exists behind it.
+  Every query is additionally scoped by both `DealId` and `WorkspaceId`
+  (`MultiTenantIsolationTests.Listing_ForAnotherWorkspacesDeal_...`).
+- The real-estate `VerticalTemplate`'s `SuggestedModules: ["listings"]`
+  flows straight into `WorkspaceSettings.EnabledModules` at provisioning
+  (`WorkspaceProvisioningService`) — picking that template at signup turns
+  the module on automatically, no separate step.
+- `/settings` (`src/app/(app)/settings`) is the module on/off switch —
+  before this it didn't exist at all: `WorkspaceSettingsController`'s PUT
+  endpoint had been reachable only via direct API calls (tests, curl) since
+  it shipped, with zero frontend. It's intentionally minimal: a checkbox per
+  known module, plus a read-only terminology summary — not a general
+  settings/terminology editor.
+- The Listing panel on the deal detail page
+  (`src/app/(app)/pipeline/[dealId]/listing-panel.tsx`) is fetched and
+  rendered only when the module is enabled — absent entirely otherwise,
+  which is the "zero modules enabled" requirement made concrete: nothing
+  else on that page depends on `Listing` existing.
 
 ## What "modular" does not mean here
 

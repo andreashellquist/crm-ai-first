@@ -6,6 +6,7 @@ import { LogActivityForm } from "./log-activity-form";
 import { DraftEmail } from "./draft-email";
 import { DealSummary } from "./deal-summary";
 import { NextBestAction } from "./next-best-action";
+import { ListingPanel } from "./listing-panel";
 
 const ACTIVITY_LABELS: Record<string, string> = {
   call: "Call",
@@ -24,6 +25,15 @@ export default async function DealDetailPage({
 
   const { data: deal } = await api.GET("/api/deals/{dealId}", { params: { path: { dealId } } });
   if (!deal) notFound();
+
+  // Optional module (workspace-customization skill §4) — only fetched/shown
+  // when this workspace has "listings" enabled; absent entirely otherwise,
+  // proving core deal-detail flows don't depend on any module.
+  const { data: settings } = await api.GET("/api/workspace/settings");
+  const listingsEnabled = settings?.enabledModules?.includes("listings") ?? false;
+  const listing = listingsEnabled
+    ? (await api.GET("/api/deals/{dealId}/listing", { params: { path: { dealId } } })).data
+    : null;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -65,6 +75,18 @@ export default async function DealDetailPage({
       ) : null}
 
       <NextBestAction dealId={deal.id} />
+
+      {listingsEnabled ? (
+        <ListingPanel
+          dealId={deal.id}
+          listing={{
+            listingAgentName: listing?.listingAgentName ?? null,
+            listingUrl: listing?.listingUrl ?? null,
+            openHouseAt: listing?.openHouseAt ?? null,
+            commissionPercent: listing?.commissionPercent ?? null,
+          }}
+        />
+      ) : null}
 
       <DraftEmail dealId={deal.id} />
 

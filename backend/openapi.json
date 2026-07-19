@@ -759,6 +759,102 @@
         }
       }
     },
+    "/api/deals/{dealId}/listing": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "parameters": [
+          {
+            "name": "dealId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Listings"
+        ],
+        "parameters": [
+          {
+            "name": "dealId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertListingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertListingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notifications": {
       "get": {
         "tags": [
@@ -2400,6 +2496,54 @@
           }
         }
       },
+      "ListingDto": {
+        "required": [
+          "dealId",
+          "listingAgentName",
+          "listingUrl",
+          "openHouseAt",
+          "commissionPercent",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "dealId": {
+            "type": "string"
+          },
+          "listingAgentName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "listingUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "openHouseAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "commissionPercent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "LogActivityRequest": {
         "required": [
           "type",
@@ -2994,6 +3138,45 @@
           }
         }
       },
+      "UpsertListingRequest": {
+        "required": [
+          "listingAgentName",
+          "listingUrl",
+          "openHouseAt",
+          "commissionPercent"
+        ],
+        "type": "object",
+        "properties": {
+          "listingAgentName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "listingUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "openHouseAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "commissionPercent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "VerticalTemplateSummaryDto": {
         "required": [
           "id",
@@ -3074,6 +3257,9 @@
     },
     {
       "name": "Jobs"
+    },
+    {
+      "name": "Listings"
     },
     {
       "name": "Notifications"

@@ -24,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PipelineSnapshot> PipelineSnapshots => Set<PipelineSnapshot>();
     public DbSet<ForecastSnapshot> ForecastSnapshots => Set<ForecastSnapshot>();
     public DbSet<ActivityMetric> ActivityMetrics => Set<ActivityMetric>();
+    public DbSet<Listing> Listings => Set<Listing>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -189,6 +190,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(m => new { m.WorkspaceId, m.Date, m.Type });
             e.HasOne(m => m.Workspace).WithMany()
                 .HasForeignKey(m => m.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Listing>(e =>
+        {
+            // One Listing per Deal — the optional-module data extends a
+            // core Deal 1:1 rather than replacing it (workspace-customization
+            // skill §4). Cascades with the Deal it extends.
+            e.HasIndex(l => l.DealId).IsUnique();
+            e.Property(l => l.CommissionPercent).HasPrecision(5, 2);
+            e.HasOne(l => l.Workspace).WithMany()
+                .HasForeignKey(l => l.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(l => l.Deal).WithOne()
+                .HasForeignKey<Listing>(l => l.DealId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

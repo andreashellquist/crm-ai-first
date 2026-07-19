@@ -68,6 +68,45 @@ export async function getDraftJobStatusAction(jobId: string): Promise<DraftJobRe
   return { status: data.status === "processing" ? "processing" : "pending", result: null };
 }
 
+export type SaveListingState = { error?: string };
+
+// Real-estate optional module (workspace-customization skill §4) — only
+// reachable when this workspace has "listings" in EnabledModules; the API
+// itself enforces that (403), this is just where the form posts to.
+export async function saveListingAction(
+  _prevState: SaveListingState,
+  formData: FormData,
+): Promise<SaveListingState> {
+  const { api } = await requireWorkspace();
+
+  const dealId = formData.get("dealId");
+  if (typeof dealId !== "string") return { error: "Missing deal" };
+
+  const listingAgentName = (formData.get("listingAgentName") as string | null)?.trim() || null;
+  const listingUrl = (formData.get("listingUrl") as string | null)?.trim() || null;
+  const openHouseAtRaw = (formData.get("openHouseAt") as string | null)?.trim() || null;
+  const commissionPercentRaw = (formData.get("commissionPercent") as string | null)?.trim() || null;
+
+  const commissionPercent = commissionPercentRaw === null ? null : Number(commissionPercentRaw);
+  if (commissionPercent !== null && Number.isNaN(commissionPercent)) {
+    return { error: "Commission percent must be a number" };
+  }
+
+  const { error } = await api.PUT("/api/deals/{dealId}/listing", {
+    params: { path: { dealId } },
+    body: {
+      listingAgentName,
+      listingUrl,
+      openHouseAt: openHouseAtRaw ? new Date(openHouseAtRaw).toISOString() : null,
+      commissionPercent,
+    },
+  });
+  if (error) return { error: "Could not save the listing" };
+
+  revalidatePath(`/pipeline/${dealId}`);
+  return {};
+}
+
 export async function summarizeDealAction(dealId: string): Promise<{ jobId: string }> {
   const { api } = await requireWorkspace();
   const { data, error } = await api.POST("/api/deals/{dealId}/summarize", {

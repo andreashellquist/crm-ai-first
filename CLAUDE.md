@@ -167,6 +167,23 @@ provisions the default template, since the OAuth flow has no template-picker
 step of its own) — a first-time Google sign-in would otherwise have landed
 on a completely broken pipeline board.
 
+Phase 3's third sub-area, the first optional module shipped end-to-end, is
+also in: real-estate `listings` (`workspace-customization` skill §4).
+`Listing` (`Models/Listing.cs`) FKs 1:1 to a `Deal` and holds structured
+fields the real-estate template's custom fields deliberately don't cover
+(listing agent, listing URL, open house time, commission percent) — proving
+the module pattern is genuinely distinct from the custom-field tier rather
+than a fancier way to do the same thing. `Controllers/ListingsController.cs`
+(`GET`/`PUT /api/deals/{dealId}/listing`) gates on
+`WorkspaceSettings.EnabledModules` before touching anything else. Picking
+the real-estate template at signup enables the module automatically (its
+`SuggestedModules` flows into `EnabledModules` at provisioning); a new
+`/settings` page is the manual on/off switch — the first frontend for
+`WorkspaceSettingsController`'s PUT endpoint, which had existed since Phase 1
+with no UI reachable from the app at all. The Listing panel on the deal
+detail page renders only when the module is enabled, absent entirely
+otherwise — the concrete proof that core flows don't depend on any module.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -179,8 +196,7 @@ auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
 `deal_assigned` notifications can exist), contact/company detail pages, deal
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression
-gating, billing), and the rest of Phase 3 (the first optional module shipped
-end-to-end, and an accessibility audit).
+gating, billing), and the rest of Phase 3 (an accessibility audit).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"

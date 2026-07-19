@@ -631,6 +631,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{dealId}/listing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ListingDto"];
+                        "application/json": components["schemas"]["ListingDto"];
+                        "text/json": components["schemas"]["ListingDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpsertListingRequest"];
+                    "text/json": components["schemas"]["UpsertListingRequest"];
+                    "application/*+json": components["schemas"]["UpsertListingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ListingDto"];
+                        "application/json": components["schemas"]["ListingDto"];
+                        "text/json": components["schemas"]["ListingDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -1717,6 +1785,17 @@ export interface components {
             lastError: null | string;
             result: null | string;
         };
+        ListingDto: {
+            dealId: string;
+            listingAgentName: null | string;
+            listingUrl: null | string;
+            /** Format: date-time */
+            openHouseAt: null | string;
+            /** Format: double */
+            commissionPercent: null | number | string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         LogActivityRequest: {
             type: string;
             body: string;
@@ -1853,6 +1932,14 @@ export interface components {
         UpdateWorkspaceSettingsRequest: {
             terminology: null | Record<string, never>;
             enabledModules: null | string[];
+        };
+        UpsertListingRequest: {
+            listingAgentName: null | string;
+            listingUrl: null | string;
+            /** Format: date-time */
+            openHouseAt: null | string;
+            /** Format: double */
+            commissionPercent: null | number | string;
         };
         VerticalTemplateSummaryDto: {
             id: string;

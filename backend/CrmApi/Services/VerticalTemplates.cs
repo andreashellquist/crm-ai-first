@@ -73,7 +73,8 @@ public static class VerticalTemplates
                 new VerticalTemplateField("deal", "bedrooms", "Bedrooms", "number"),
                 new VerticalTemplateField("deal", "square_footage", "Square Footage", "number"),
                 new VerticalTemplateField("deal", "mls_status", "MLS Status", "select", ["Active", "Pending", "Sold"]),
-            ]
+            ],
+            SuggestedModules: ["listings"]
         ),
         new VerticalTemplate(
             Id: "recruiting",
