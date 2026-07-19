@@ -197,6 +197,29 @@ the mechanically-detectable subset of WCAG (labels, contrast, roles,
 landmarks) — it is not a substitute for manual keyboard/screen-reader
 testing of new interactive patterns going forward.
 
+Phase 4 ("Enterprise & platform") has started with the public API and
+outbound webhooks, per the `public-api-and-webhooks` skill and
+`api-platform-expert`. Workspace-scoped `ApiKey`s (`crm_live_`-prefixed,
+SHA-256-hashed at rest, shown once at creation) authenticate a second,
+`X-Api-Key`-based ASP.NET Core auth scheme (`ApiKeyAuthenticationHandler`)
+that resolves to the same `workspaceId` claim session auth does, so every
+`/api/v1/*` read endpoint (`contacts`, `companies`, `deals`,
+`field-definitions`) re-scopes by workspace exactly like the rest of the
+app — external auth is a different front door, never a parallel
+less-checked path. Scopes (`{entity}:read`) gate access via
+`RequireScopeAttribute`, and a fixed-window `RateLimiter` policy throttles
+each key independently of the app's own internal usage. Outbound
+`WebhookSubscription`s fire on a small, fixed business-event catalog
+(`deal.won`, `deal.lost`, `deal.stage_changed`, `contact.created`) via the
+existing `deliver_webhook` background job, which deliberately reuses
+`JobWorker`'s own exponential-backoff retry rather than a bespoke one;
+deliveries are HMAC-signed (`X-Crm-Signature`) and their history is visible
+per-subscription so a broken integration is discoverable, not silently
+dropping events. `/settings` gained API-key and webhook-management sections
+— v1 is deliberately read-only and capped at 100 results per list call;
+write scopes and real cursor pagination are a follow-up once a concrete
+integration needs them, not a hidden gap.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -205,12 +228,13 @@ agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
 any actual email/calendar send capability, RAG over CRM history, enterprise
-auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
+auth (SSO/SAML/SCIM, custom roles/permissions — the rest of Phase 4's
+"Enterprise" half), task/deal assignment (needed before `task_overdue`/
 `deal_assigned` notifications can exist), contact/company detail pages, deal
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression
-gating, billing), and the rest of Phase 4 (public API/webhooks, regional
-compliance/localized billing, locale-aware formatting).
+gating, billing), and the rest of Phase 4 (regional compliance/localized
+billing, locale-aware formatting, SOC 2 readiness).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
@@ -218,9 +242,9 @@ below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
 `backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
 `devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`,
 `workspace-customization`, `csv-import-dedupe`, `notifications-and-digests`,
-and `reporting-read-models` have been updated for the new stack. Skills
-further from the migration's blast radius (`pipeline-kanban-board`,
-`public-api-and-webhooks`, `i18n-currency-timezone`,
+`reporting-read-models`, and `public-api-and-webhooks` have been updated for
+the new stack. Skills further from the migration's blast radius
+(`pipeline-kanban-board`, `i18n-currency-timezone`,
 `communication-consent-and-suppression`) still show
 Prisma/TypeScript-flavored schema snippets and code examples — the *patterns
 and conventions* in them (multi-tenancy, soft deletes, tool-calling

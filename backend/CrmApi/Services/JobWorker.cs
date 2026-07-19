@@ -13,6 +13,7 @@ record SummarizeDealPayload(string DealId, string WorkspaceId);
 record NextBestActionPayload(string DealId, string WorkspaceId);
 record ImportContactsPayload(string CsvContent, Dictionary<string, string> ColumnMapping, string WorkspaceId);
 record RefreshReportsPayload(string WorkspaceId);
+record DeliverWebhookPayload(string DeliveryId);
 
 // Runs in-process as a hosted service for local dev / a dedicated deployment.
 // ProcessBatchAsync is deliberately the unit both this loop and a future
@@ -100,6 +101,50 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
                 ?? throw new InvalidOperationException("Invalid refresh_reports payload");
             await reporting.RefreshWorkspaceReports(payload.WorkspaceId);
             return null; // persisted onto the read-model tables directly
+        },
+        // Deliberately relies on this worker's own retry/backoff (Job.Attempts
+        // vs MaxAttempts, exponential backoff below) rather than a bespoke
+        // retry loop of its own — see the public-api-and-webhooks skill.
+        // job.Attempts already reflects *this* attempt (incremented by the
+        // claiming UPDATE in ProcessBatchAsync before the handler runs), so
+        // comparing it to job.MaxAttempts here tells the handler whether this
+        // is the terminal try, without needing to catch the retry decision
+        // ProcessBatchAsync makes afterward.
+        ["deliver_webhook"] = async (services, job) =>
+        {
+            var db = services.GetRequiredService<AppDbContext>();
+            var payload = JsonSerializer.Deserialize<DeliverWebhookPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid deliver_webhook payload");
+            var delivery = await db.WebhookDeliveries.Include(d => d.Subscription)
+                .FirstOrDefaultAsync(d => d.Id == payload.DeliveryId)
+                ?? throw new InvalidOperationException("Webhook delivery not found");
+
+            delivery.Attempts++;
+            delivery.LastAttemptAt = DateTime.UtcNow;
+
+            try
+            {
+                var httpClient = services.GetRequiredService<IHttpClientFactory>().CreateClient("webhooks");
+                var request = new HttpRequestMessage(HttpMethod.Post, delivery.Subscription!.Url)
+                {
+                    Content = new StringContent(delivery.Payload, System.Text.Encoding.UTF8, "application/json"),
+                };
+                request.Headers.Add("X-Crm-Signature", WebhookSigner.Sign(delivery.Subscription.Secret, delivery.Payload));
+                request.Headers.Add("X-Crm-Event", delivery.EventType);
+                var response = await httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException($"Webhook endpoint returned HTTP {(int)response.StatusCode}");
+
+                delivery.Status = "delivered";
+                await db.SaveChangesAsync();
+                return null;
+            }
+            catch
+            {
+                delivery.Status = job.Attempts >= job.MaxAttempts ? "failed" : "pending";
+                await db.SaveChangesAsync();
+                throw;
+            }
         },
     };
 

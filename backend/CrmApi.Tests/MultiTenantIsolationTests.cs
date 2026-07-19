@@ -290,6 +290,21 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task PublicApiV1_ApiKeyScopedToOneWorkspace_NeverReturnsAnotherWorkspacesContacts()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        var ownerContact = TestData.Contact(owner.Workspace, "Owner's Contact");
+        await WithDb(async db => { db.Contacts.Add(ownerContact); await db.SaveChangesAsync(); });
+
+        var intruderKey = await CreateApiKeyAsync(intruder.Workspace.Id, intruder.User.Id, "contacts:read");
+        var intruderApiClient = ApiKeyClient(intruderKey);
+
+        var contacts = await intruderApiClient.GetFromJsonAsync<List<PublicContactDto>>("/api/v1/contacts");
+        Assert.DoesNotContain(contacts!, c => c.Id == ownerContact.Id);
+    }
+
+    [Fact]
     public async Task Reports_NeverReflectAnotherWorkspacesDeals()
     {
         var owner = await SeedWorkspaceAsync();

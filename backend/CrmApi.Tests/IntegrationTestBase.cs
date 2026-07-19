@@ -60,6 +60,35 @@ public abstract class IntegrationTestBase(CrmApiFactory factory)
         return client;
     }
 
+    // Public v1 API auth (ApiKeyAuthenticationHandler) uses X-Api-Key, not a
+    // Bearer token — a real raw key, generated/hashed the same way
+    // ApiKeysController.Create does, inserted directly so tests don't need
+    // to go through the issuing endpoint just to exercise v1 endpoints.
+    protected async Task<string> CreateApiKeyAsync(string workspaceId, string userId, params string[] scopes)
+    {
+        var (rawKey, hashedKey) = ApiKeyGenerator.Generate();
+        await WithDb(async db =>
+        {
+            db.ApiKeys.Add(new ApiKey
+            {
+                WorkspaceId = workspaceId,
+                Name = "Test key",
+                HashedKey = hashedKey,
+                Scopes = scopes.ToList(),
+                CreatedByUserId = userId,
+            });
+            await db.SaveChangesAsync();
+        });
+        return rawKey;
+    }
+
+    protected HttpClient ApiKeyClient(string rawKey)
+    {
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", rawKey);
+        return client;
+    }
+
     // Seeds a workspace with an owner user and a two-stage default pipeline —
     // the minimum every controller test needs — and returns an authed
     // HttpClient for that user alongside the ids tests typically assert on.

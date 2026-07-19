@@ -48,7 +48,8 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
     }
 
     [HttpPost("deals/{dealId}/move")]
-    public async Task<IActionResult> MoveDeal(string dealId, MoveDealRequest request, [FromServices] JobQueueService queue)
+    public async Task<IActionResult> MoveDeal(
+        string dealId, MoveDealRequest request, [FromServices] JobQueueService queue, [FromServices] WebhookDeliveryService webhooks)
     {
         // Re-validate both IDs belong to this workspace before writing — never
         // trust a client-supplied ID is already scoped correctly.
@@ -57,10 +58,21 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             .FirstOrDefaultAsync(s => s.Id == request.StageId && s.Pipeline!.WorkspaceId == current.WorkspaceId);
         if (deal is null || stage is null) return NotFound("Deal or stage not found in this workspace");
 
+        var previousStageId = deal.StageId;
         deal.StageId = stage.Id;
         deal.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
+
+        if (previousStageId != stage.Id)
+        {
+            await webhooks.Enqueue(current.WorkspaceId, "deal.stage_changed",
+                new { dealId = deal.Id, previousStageId, stageId = stage.Id });
+            if (stage.IsWon)
+                await webhooks.Enqueue(current.WorkspaceId, "deal.won", new { dealId = deal.Id, stageId = stage.Id });
+            else if (stage.IsLost)
+                await webhooks.Enqueue(current.WorkspaceId, "deal.lost", new { dealId = deal.Id, stageId = stage.Id });
+        }
         return NoContent();
     }
 

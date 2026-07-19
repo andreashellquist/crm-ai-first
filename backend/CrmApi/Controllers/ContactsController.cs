@@ -50,7 +50,7 @@ public class ContactsController(AppDbContext db, CurrentUser current) : Controll
     }
 
     [HttpPost]
-    public async Task<ActionResult<ContactDto>> Create(CreateContactRequest request)
+    public async Task<ActionResult<ContactDto>> Create(CreateContactRequest request, [FromServices] WebhookDeliveryService webhooks)
     {
         if (string.IsNullOrWhiteSpace(request.FirstName))
             return BadRequest("First name is required");
@@ -93,6 +93,7 @@ public class ContactsController(AppDbContext db, CurrentUser current) : Controll
         };
         db.Contacts.Add(contact);
         await db.SaveChangesAsync();
+        await webhooks.Enqueue(current.WorkspaceId, "contact.created", new { contactId = contact.Id });
 
         return Ok(new ContactDto(contact.Id, contact.FirstName, contact.LastName, contact.Email, request.CompanyName, contact.LifecycleStage,
             JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(contact.CustomFields) ?? []));

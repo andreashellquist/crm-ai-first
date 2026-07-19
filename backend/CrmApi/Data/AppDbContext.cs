@@ -25,6 +25,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ForecastSnapshot> ForecastSnapshots => Set<ForecastSnapshot>();
     public DbSet<ActivityMetric> ActivityMetrics => Set<ActivityMetric>();
     public DbSet<Listing> Listings => Set<Listing>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -203,6 +206,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(l => l.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(l => l.Deal).WithOne()
                 .HasForeignKey<Listing>(l => l.DealId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApiKey>(e =>
+        {
+            e.HasIndex(k => k.HashedKey).IsUnique();
+            e.HasIndex(k => new { k.WorkspaceId, k.RevokedAt });
+            e.HasOne(k => k.Workspace).WithMany()
+                .HasForeignKey(k => k.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WebhookSubscription>(e =>
+        {
+            e.HasIndex(s => new { s.WorkspaceId, s.IsActive });
+            e.HasOne(s => s.Workspace).WithMany()
+                .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WebhookDelivery>(e =>
+        {
+            e.HasIndex(d => new { d.SubscriptionId, d.Status, d.CreatedAt });
+            e.HasOne(d => d.Subscription).WithMany()
+                .HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

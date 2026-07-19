@@ -28,6 +28,7 @@ public class CrmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public FakeAnthropicMessagesClient Anthropic { get; } = new();
     public FakeGoogleOAuthClient GoogleOAuth { get; } = new();
+    public FakeWebhookHttpMessageHandler WebhookHandler { get; } = new();
 
     static CrmApiFactory()
     {
@@ -48,6 +49,11 @@ public class CrmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddSingleton<IAnthropicMessagesClient>(Anthropic);
             services.RemoveAll<IGoogleOAuthClient>();
             services.AddSingleton<IGoogleOAuthClient>(GoogleOAuth);
+            // Overrides Program.cs's "webhooks" named client's primary
+            // handler — applied after Program.cs's own AddHttpClient
+            // registration, which wins since HttpClientFactory applies
+            // ConfigurePrimaryHttpMessageHandler registrations in order.
+            services.AddHttpClient("webhooks").ConfigurePrimaryHttpMessageHandler(() => WebhookHandler);
 
             // JobWorker normally self-schedules on a 2s idle-poll loop as a
             // BackgroundService. Tests drive it deterministically instead by

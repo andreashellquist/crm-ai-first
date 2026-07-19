@@ -1,8 +1,12 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using CrmApi.Authorization;
 using CrmApi.Data;
 using CrmApi.Observability;
 using CrmApi.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -96,6 +100,10 @@ builder.Services.AddScoped<ContactImportService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReportingService>();
 builder.Services.AddScoped<WorkspaceProvisioningService>();
+builder.Services.AddScoped<WebhookDeliveryService>();
+// A dead/slow customer endpoint must never tie up a job-worker slot
+// indefinitely — see the public-api-and-webhooks skill.
+builder.Services.AddHttpClient("webhooks", c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<IAnthropicMessagesClient, AnthropicMessagesClient>();
 builder.Services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>();
 builder.Services.AddHostedService<JobWorker>();
@@ -125,8 +133,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
         };
-    });
+    })
+    // The public v1 API's front door (public-api-and-webhooks skill) — a
+    // separate scheme from the session JWT, selected explicitly per
+    // controller via [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)],
+    // never the default, so the app's own frontend traffic is unaffected.
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization();
+
+// Per-API-key rate limit for the public v1 API, independent of any
+// in-app/internal rate limiting — a runaway external integration is
+// throttled without affecting that workspace's own product usage. Partition
+// key is the authenticated ApiKey's id (falls back to "anonymous" pre-auth,
+// e.g. a request with a missing/invalid key, so those still count against a
+// shared low-traffic bucket instead of bypassing limiting entirely).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("ApiKey", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.User.FindFirst("apiKeyId")?.Value ?? "anonymous",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+});
 
 var app = builder.Build();
 
@@ -178,6 +209,7 @@ app.Use(async (context, next) =>
 });
 
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 

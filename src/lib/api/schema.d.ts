@@ -37,6 +37,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiKeyDto"][];
+                        "application/json": components["schemas"]["ApiKeyDto"][];
+                        "text/json": components["schemas"]["ApiKeyDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateApiKeyRequest"];
+                    "text/json": components["schemas"]["CreateApiKeyRequest"];
+                    "application/*+json": components["schemas"]["CreateApiKeyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreateApiKeyResponse"];
+                        "application/json": components["schemas"]["CreateApiKeyResponse"];
+                        "text/json": components["schemas"]["CreateApiKeyResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/api-keys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -1574,6 +1673,212 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/webhook-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookSubscriptionDto"][];
+                        "application/json": components["schemas"]["WebhookSubscriptionDto"][];
+                        "text/json": components["schemas"]["WebhookSubscriptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateWebhookSubscriptionRequest"];
+                    "text/json": components["schemas"]["CreateWebhookSubscriptionRequest"];
+                    "application/*+json": components["schemas"]["CreateWebhookSubscriptionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreateWebhookSubscriptionResponse"];
+                        "application/json": components["schemas"]["CreateWebhookSubscriptionResponse"];
+                        "text/json": components["schemas"]["CreateWebhookSubscriptionResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/webhook-subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateWebhookSubscriptionRequest"];
+                    "text/json": components["schemas"]["UpdateWebhookSubscriptionRequest"];
+                    "application/*+json": components["schemas"]["UpdateWebhookSubscriptionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookSubscriptionDto"];
+                        "application/json": components["schemas"]["WebhookSubscriptionDto"];
+                        "text/json": components["schemas"]["WebhookSubscriptionDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/webhook-subscriptions/{id}/regenerate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RegenerateWebhookSecretResponse"];
+                        "application/json": components["schemas"]["RegenerateWebhookSecretResponse"];
+                        "text/json": components["schemas"]["RegenerateWebhookSecretResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/webhook-subscriptions/{id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WebhookDeliveryDto"][];
+                        "application/json": components["schemas"]["WebhookDeliveryDto"][];
+                        "text/json": components["schemas"]["WebhookDeliveryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workspace/settings": {
         parameters: {
             query?: never;
@@ -1638,6 +1943,279 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicCompanyDto"][];
+                        "application/json": components["schemas"]["PublicCompanyDto"][];
+                        "text/json": components["schemas"]["PublicCompanyDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/companies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicCompanyDto"];
+                        "application/json": components["schemas"]["PublicCompanyDto"];
+                        "text/json": components["schemas"]["PublicCompanyDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicContactDto"][];
+                        "application/json": components["schemas"]["PublicContactDto"][];
+                        "text/json": components["schemas"]["PublicContactDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicContactDto"];
+                        "application/json": components["schemas"]["PublicContactDto"];
+                        "text/json": components["schemas"]["PublicContactDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicDealDto"][];
+                        "application/json": components["schemas"]["PublicDealDto"][];
+                        "text/json": components["schemas"]["PublicDealDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicDealDto"];
+                        "application/json": components["schemas"]["PublicDealDto"];
+                        "text/json": components["schemas"]["PublicDealDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/field-definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    entityType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["FieldDefinitionDto"][];
+                        "application/json": components["schemas"]["FieldDefinitionDto"][];
+                        "text/json": components["schemas"]["FieldDefinitionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1656,6 +2234,17 @@ export interface components {
             /** Format: int32 */
             count: number | string;
         };
+        ApiKeyDto: {
+            id: string;
+            name: string;
+            scopes: string[];
+            /** Format: date-time */
+            lastUsedAt: null | string;
+            /** Format: date-time */
+            revokedAt: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         CompanyDto: {
             id: string;
             name: string;
@@ -1670,6 +2259,14 @@ export interface components {
             companyName: null | string;
             lifecycleStage: string;
             customFields: Record<string, never>;
+        };
+        CreateApiKeyRequest: {
+            name: string;
+            scopes: string[];
+        };
+        CreateApiKeyResponse: {
+            key: components["schemas"]["ApiKeyDto"];
+            rawKey: string;
         };
         CreateContactRequest: {
             firstName: string;
@@ -1700,6 +2297,14 @@ export interface components {
             contactId: null | string;
             companyId: null | string;
             dealId: null | string;
+        };
+        CreateWebhookSubscriptionRequest: {
+            url: string;
+            eventTypes: string[];
+        };
+        CreateWebhookSubscriptionResponse: {
+            subscription: components["schemas"]["WebhookSubscriptionDto"];
+            secret: string;
         };
         CsvImportPreviewRequest: {
             csvContent: string;
@@ -1840,8 +2445,53 @@ export interface components {
             /** Format: int32 */
             weightedValueCents: number | string;
         };
+        PublicCompanyDto: {
+            id: string;
+            name: string;
+            domain: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            customFields: Record<string, never>;
+        };
+        PublicContactDto: {
+            id: string;
+            firstName: null | string;
+            lastName: null | string;
+            email: null | string;
+            phone: null | string;
+            companyId: null | string;
+            lifecycleStage: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            customFields: Record<string, never>;
+        };
+        PublicDealDto: {
+            id: string;
+            companyId: null | string;
+            pipelineId: string;
+            stageId: string;
+            /** Format: int32 */
+            amountCents: null | number | string;
+            currency: null | string;
+            forecastCategory: string;
+            contactIds: string[];
+            /** Format: date-time */
+            closedAt: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            customFields: Record<string, never>;
+        };
         RefreshReportsResponse: {
             jobId: string;
+        };
+        RegenerateWebhookSecretResponse: {
+            secret: string;
         };
         RegisterRequest: {
             email: string;
@@ -1929,6 +2579,10 @@ export interface components {
             dueAt: null | string;
             completed: boolean;
         };
+        UpdateWebhookSubscriptionRequest: {
+            eventTypes: string[];
+            isActive: boolean;
+        };
         UpdateWorkspaceSettingsRequest: {
             terminology: null | Record<string, never>;
             enabledModules: null | string[];
@@ -1950,6 +2604,25 @@ export interface components {
             companyTerm: string;
             contactTerm: string;
             stages: string[];
+        };
+        WebhookDeliveryDto: {
+            id: string;
+            eventType: string;
+            status: string;
+            /** Format: int32 */
+            attempts: number | string;
+            /** Format: date-time */
+            lastAttemptAt: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WebhookSubscriptionDto: {
+            id: string;
+            url: string;
+            eventTypes: string[];
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
         };
         WorkspaceSettingsDto: {
             terminology: Record<string, never>;
