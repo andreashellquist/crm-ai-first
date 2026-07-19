@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using CrmApi.Dtos;
+using CrmApi.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CrmApi.Tests;
@@ -221,6 +222,22 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
 
         var intruderContacts = await WithDb(db => db.Contacts.Where(c => c.WorkspaceId == intruder.Workspace.Id && c.Email == "shared@example.com").ToListAsync());
         Assert.Single(intruderContacts);
+    }
+
+    [Fact]
+    public async Task Notifications_List_OnlyReturnsCallersWorkspace()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        await WithDb(async db =>
+        {
+            db.Notifications.Add(new Notification { WorkspaceId = owner.Workspace.Id, UserId = owner.User.Id, Type = "ai_suggestion_ready" });
+            await db.SaveChangesAsync();
+        });
+
+        var notifications = await intruder.Client.GetFromJsonAsync<List<NotificationDto>>("/api/notifications");
+        Assert.NotNull(notifications);
+        Assert.Empty(notifications!);
     }
 
     [Fact]

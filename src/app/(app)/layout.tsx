@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/lib/workspace";
 import { clearSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "./notification-bell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { workspaceName } = await requireWorkspace();
@@ -21,17 +22,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
           </nav>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            await clearSession();
-            redirect("/login");
-          }}
-        >
-          <Button variant="ghost" size="sm" type="submit">
-            Sign out
-          </Button>
-        </form>
+        <div className="flex items-center gap-3">
+          <NotificationBell />
+          <form
+            action={async () => {
+              "use server";
+              await clearSession();
+              redirect("/login");
+            }}
+          >
+            <Button variant="ghost" size="sm" type="submit">
+              Sign out
+            </Button>
+          </form>
+        </div>
       </header>
       <main className="flex-1 p-6">{children}</main>
     </div>

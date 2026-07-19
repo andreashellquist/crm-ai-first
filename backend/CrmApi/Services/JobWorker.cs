@@ -70,6 +70,18 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
             var payload = JsonSerializer.Deserialize<NextBestActionPayload>(job.Payload, PayloadOptions)
                 ?? throw new InvalidOperationException("Invalid next_best_action payload");
             var result = await nextBestAction.SuggestActions(payload.DealId, payload.WorkspaceId);
+
+            // "AI-generated suggestions/drafts becoming ready is itself a
+            // notification-worthy event" — notifications-and-digests skill.
+            // Only the requester is notified (RequestedByUserId, set when
+            // PipelineController.NextBestAction enqueues); older/other job
+            // types without a requester simply don't notify anyone.
+            if (job.RequestedByUserId is { } requestedBy)
+            {
+                var notifications = services.GetRequiredService<NotificationService>();
+                await notifications.Notify(payload.WorkspaceId, requestedBy, "ai_suggestion_ready", "deal", payload.DealId);
+            }
+
             return JsonSerializer.Serialize(result, ResultOptions);
         },
         ["import_contacts"] = async (services, job) =>

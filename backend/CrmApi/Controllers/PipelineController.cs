@@ -115,7 +115,11 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
         var deal = await db.Deals.FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId);
         if (deal is null) return NotFound();
 
-        var jobId = await queue.Enqueue("next_best_action", new { dealId = deal.Id, workspaceId = current.WorkspaceId }, current.WorkspaceId);
+        var jobId = await queue.Enqueue(
+            "next_best_action",
+            new { dealId = deal.Id, workspaceId = current.WorkspaceId },
+            current.WorkspaceId,
+            requestedByUserId: current.UserId);
         return Ok(new NextBestActionResponse(jobId));
     }
 

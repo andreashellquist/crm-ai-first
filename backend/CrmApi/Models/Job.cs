@@ -6,6 +6,11 @@ public class Job
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string? WorkspaceId { get; set; }
+    // Who asked for this job, when that's meaningful (e.g. so a completing
+    // next_best_action job knows who to notify) — null for job types with no
+    // single requesting user (none currently) or where the queueing endpoint
+    // predates this column.
+    public string? RequestedByUserId { get; set; }
     public required string Type { get; set; } // e.g. "score_deal"
     public required string Payload { get; set; } // jsonb text
     public string Status { get; set; } = "pending"; // pending | processing | succeeded | failed

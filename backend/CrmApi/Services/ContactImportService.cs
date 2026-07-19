@@ -121,9 +121,18 @@ public class ContactImportService(AppDbContext db)
 
             var company = ResolveCompany(companyName, companyDomain, email, workspaceId, companiesByDomain, companiesByName);
 
+            // Domain + name matching is a fallback for rows with no email to
+            // key off, per the csv-import-dedupe skill — not a second chance
+            // for rows whose email simply didn't match anyone. Falling
+            // through to it whenever the email lookup came up empty would
+            // silently merge a genuinely new person (who happens to share a
+            // name at the same company) into an unrelated existing contact.
             Contact? match = null;
-            if (email is not null) contactsByEmail.TryGetValue(email.ToLowerInvariant(), out match);
-            if (match is null && company is not null && (firstName is not null || lastName is not null))
+            if (email is not null)
+            {
+                contactsByEmail.TryGetValue(email.ToLowerInvariant(), out match);
+            }
+            else if (company is not null && (firstName is not null || lastName is not null))
             {
                 match = existingContacts.FirstOrDefault(c =>
                     c.CompanyId == company.Id &&

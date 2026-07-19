@@ -101,6 +101,20 @@ in currently-blank fields, never overwrites. v1-scoped to the fixed Contact
 fields (email/firstName/lastName/phone/companyName/companyDomain) — custom-
 field mapping is a deliberate follow-up, not a hidden gap.
 
+In-app notifications (`Notification`/`NotificationPreference`, per the
+`notifications-and-digests` skill) are also in — a bell in the app header
+(`NotificationBell`, polling `/api/notifications/unread-count` every 20s)
+with a panel listing recent notifications, mark-as-read, and mark-all-read.
+The one wired trigger today is `ai_suggestion_ready`, fired when a
+`next_best_action` job succeeds (`Job.RequestedByUserId`, set when
+`PipelineController.NextBestAction` enqueues, is who gets notified — the
+skill's other suggested triggers, `deal_assigned` and `task_overdue`, don't
+have a real trigger yet: neither `Deal` nor `TaskItem` has an assignee/owner
+column, so "who gets notified" is genuinely unresolved rather than a gap to
+paper over with a guess). Email digests are schema-only
+(`NotificationPreference.EmailDigest`) and not consumed by anything, since
+there's no email-sending capability in this app at all yet.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -109,18 +123,20 @@ agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
 any actual email/calendar send capability, RAG over CRM history, enterprise
-auth (SSO/SAML/SCIM), and the rest of Phase 2 (email/calendar sync with
-consent/suppression gating, notifications, search/saved views, billing).
+auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
+`deal_assigned` notifications can exist), and the rest of Phase 2
+(email/calendar sync with consent/suppression gating, search/saved views,
+billing).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
 below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
 `backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
 `devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`,
-`workspace-customization`, and `csv-import-dedupe` have been updated for the
-new stack. Skills further from the migration's blast radius
-(`pipeline-kanban-board`, `reporting-read-models`, `public-api-and-webhooks`,
-`notifications-and-digests`, `i18n-currency-timezone`,
+`workspace-customization`, `csv-import-dedupe`, and `notifications-and-digests`
+have been updated for the new stack. Skills further from the migration's
+blast radius (`pipeline-kanban-board`, `reporting-read-models`,
+`public-api-and-webhooks`, `i18n-currency-timezone`,
 `communication-consent-and-suppression`) still show
 Prisma/TypeScript-flavored schema snippets and code examples — the *patterns
 and conventions* in them (multi-tenancy, soft deletes, tool-calling

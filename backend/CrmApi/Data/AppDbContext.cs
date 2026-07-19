@@ -18,6 +18,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<WorkspaceSettings> WorkspaceSettings => Set<WorkspaceSettings>();
     public DbSet<FieldDefinition> FieldDefinitions => Set<FieldDefinition>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -134,6 +136,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(t => t.CompanyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(t => t.Deal).WithMany(d => d.Tasks)
                 .HasForeignKey(t => t.DealId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Notification>(e =>
+        {
+            // The notification center's two read patterns: "recent for me in
+            // this workspace" and "unread count for me in this workspace".
+            e.HasIndex(n => new { n.WorkspaceId, n.UserId, n.ReadAt, n.CreatedAt });
+            e.HasOne(n => n.Workspace).WithMany(w => w.Notifications)
+                .HasForeignKey(n => n.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(n => n.User).WithMany()
+                .HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NotificationPreference>(e =>
+        {
+            e.HasIndex(p => new { p.UserId, p.Type }).IsUnique();
+            e.HasOne(p => p.User).WithMany()
+                .HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

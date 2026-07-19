@@ -17,6 +17,7 @@ public class Workspace
     public List<TaskItem> Tasks { get; set; } = [];
     public WorkspaceSettings? Settings { get; set; }
     public List<FieldDefinition> FieldDefinitions { get; set; } = [];
+    public List<Notification> Notifications { get; set; } = [];
 }
 
 public class WorkspaceMember

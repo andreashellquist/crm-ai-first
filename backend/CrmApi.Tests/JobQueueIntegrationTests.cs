@@ -169,6 +169,14 @@ public class JobQueueIntegrationTests(CrmApiFactory factory) : IntegrationTestBa
             // a case-sensitive check that the payload is actually camelCase.
             Assert.Contains("\"suggestions\":", statusResponse.Result);
             Assert.Contains("Send a follow-up email", statusResponse.Result);
+
+            // "AI-generated suggestions/drafts becoming ready is itself a
+            // notification-worthy event" — notifications-and-digests skill.
+            var notification = await WithDb(db => db.Notifications.SingleAsync(n => n.WorkspaceId == ws.Workspace.Id));
+            Assert.Equal(ws.User.Id, notification.UserId); // the requester, per Job.RequestedByUserId
+            Assert.Equal("ai_suggestion_ready", notification.Type);
+            Assert.Equal("deal", notification.EntityType);
+            Assert.Equal(deal.Id, notification.EntityId);
         }
         finally
         {

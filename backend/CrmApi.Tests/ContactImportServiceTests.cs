@@ -106,6 +106,36 @@ public class ContactImportServiceTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task Import_RowHasEmailThatDoesNotMatchAnyone_CreatesNewContactEvenIfNameAndCompanyMatchSomeoneElse()
+    {
+        // Regression test: the domain+name fallback match is only for rows
+        // with NO email (per the csv-import-dedupe skill) — a row that DOES
+        // provide an email, just one nobody has yet, must never fall through
+        // to a name-based match and silently merge into an unrelated
+        // existing contact who happens to share a name at the same company.
+        var ws = await SeedWorkspaceAsync();
+        var company = TestData.Company(ws.Workspace, "Wonka Industries");
+        company.Domain = "wonka.example";
+        var existing = TestData.Contact(ws.Workspace, "Taylor", company);
+        existing.LastName = "Import";
+        existing.Email = "original.taylor@wonka.example";
+        await WithDb(async db => { db.Companies.Add(company); db.Contacts.Add(existing); await db.SaveChangesAsync(); });
+
+        var csv = "Email,First,Last,Phone,Domain\nbrand.new@wonka.example,Taylor,Import,555-0177,wonka.example";
+        var result = await Service().Import(csv, DefaultMapping, ws.Workspace.Id);
+
+        Assert.Equal(1, result.Created);
+        Assert.Equal(0, result.Updated);
+
+        var originalAfter = await WithDb(db => db.Contacts.SingleAsync(c => c.Id == existing.Id));
+        Assert.Equal("original.taylor@wonka.example", originalAfter.Email); // untouched
+        Assert.Null(originalAfter.Phone); // not overwritten by the new row
+
+        var newContact = await WithDb(db => db.Contacts.SingleAsync(c => c.WorkspaceId == ws.Workspace.Id && c.Email == "brand.new@wonka.example"));
+        Assert.Equal("555-0177", newContact.Phone);
+    }
+
+    [Fact]
     public async Task Import_InvalidEmailFormat_RecordsRowError()
     {
         var ws = await SeedWorkspaceAsync();
