@@ -12,6 +12,7 @@ record DraftEmailPayload(string DealId, string WorkspaceId, string? Instruction)
 record SummarizeDealPayload(string DealId, string WorkspaceId);
 record NextBestActionPayload(string DealId, string WorkspaceId);
 record ImportContactsPayload(string CsvContent, Dictionary<string, string> ColumnMapping, string WorkspaceId);
+record RefreshReportsPayload(string WorkspaceId);
 
 // Runs in-process as a hosted service for local dev / a dedicated deployment.
 // ProcessBatchAsync is deliberately the unit both this loop and a future
@@ -91,6 +92,14 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
                 ?? throw new InvalidOperationException("Invalid import_contacts payload");
             var result = await import.Import(payload.CsvContent, payload.ColumnMapping, payload.WorkspaceId);
             return JsonSerializer.Serialize(result, ResultOptions);
+        },
+        ["refresh_reports"] = async (services, job) =>
+        {
+            var reporting = services.GetRequiredService<ReportingService>();
+            var payload = JsonSerializer.Deserialize<RefreshReportsPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid refresh_reports payload");
+            await reporting.RefreshWorkspaceReports(payload.WorkspaceId);
+            return null; // persisted onto the read-model tables directly
         },
     };
 

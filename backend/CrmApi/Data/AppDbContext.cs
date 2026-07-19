@@ -21,6 +21,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<SavedView> SavedViews => Set<SavedView>();
+    public DbSet<PipelineSnapshot> PipelineSnapshots => Set<PipelineSnapshot>();
+    public DbSet<ForecastSnapshot> ForecastSnapshots => Set<ForecastSnapshot>();
+    public DbSet<ActivityMetric> ActivityMetrics => Set<ActivityMetric>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -165,6 +168,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(v => v.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(v => v.User).WithMany()
                 .HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PipelineSnapshot>(e =>
+        {
+            e.HasIndex(s => new { s.WorkspaceId, s.PipelineId, s.StageId });
+            e.HasOne(s => s.Workspace).WithMany()
+                .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ForecastSnapshot>(e =>
+        {
+            e.HasIndex(s => new { s.WorkspaceId, s.PipelineId, s.ForecastCategory });
+            e.HasOne(s => s.Workspace).WithMany()
+                .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ActivityMetric>(e =>
+        {
+            e.HasIndex(m => new { m.WorkspaceId, m.Date, m.Type });
+            e.HasOne(m => m.Workspace).WithMany()
+                .HasForeignKey(m => m.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

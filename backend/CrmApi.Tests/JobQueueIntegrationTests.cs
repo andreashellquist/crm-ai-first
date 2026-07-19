@@ -209,4 +209,26 @@ public class JobQueueIntegrationTests(CrmApiFactory factory) : IntegrationTestBa
         var persisted = await WithDb(db => db.Contacts.SingleAsync(c => c.WorkspaceId == ws.Workspace.Id && c.Email == "jane@acme.com"));
         Assert.Equal("Jane", persisted.FirstName);
     }
+
+    [Fact]
+    public async Task RefreshReportsJob_OnSuccess_WritesReadModelRows()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne, amountCents: 200_00);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var refreshResponse = await ws.Client.PostAsync("/api/reports/refresh", content: null);
+        refreshResponse.EnsureSuccessStatusCode();
+        var enqueued = await refreshResponse.Content.ReadFromJsonAsync<RefreshReportsResponse>();
+        Assert.NotNull(enqueued);
+
+        await ProcessAllPendingJobsAsync();
+
+        var statusResponse = await ws.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+        Assert.Equal("succeeded", statusResponse!.Status);
+
+        var snapshot = await WithDb(db => db.PipelineSnapshots.SingleAsync(s => s.WorkspaceId == ws.Workspace.Id && s.StageId == ws.StageOne.Id));
+        Assert.Equal(1, snapshot.DealCount);
+        Assert.Equal(200_00, snapshot.DealValueCents);
+    }
 }

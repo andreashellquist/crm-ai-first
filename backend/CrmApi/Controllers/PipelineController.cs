@@ -48,7 +48,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
     }
 
     [HttpPost("deals/{dealId}/move")]
-    public async Task<IActionResult> MoveDeal(string dealId, MoveDealRequest request)
+    public async Task<IActionResult> MoveDeal(string dealId, MoveDealRequest request, [FromServices] JobQueueService queue)
     {
         // Re-validate both IDs belong to this workspace before writing — never
         // trust a client-supplied ID is already scoped correctly.
@@ -60,6 +60,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
         deal.StageId = stage.Id;
         deal.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+        await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
         return NoContent();
     }
 
@@ -124,7 +125,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
     }
 
     [HttpPut("deals/{dealId}")]
-    public async Task<ActionResult<DealDetailDto>> UpdateDeal(string dealId, UpdateDealRequest request)
+    public async Task<ActionResult<DealDetailDto>> UpdateDeal(string dealId, UpdateDealRequest request, [FromServices] JobQueueService queue)
     {
         if (!ValidForecastCategories.Contains(request.ForecastCategory))
             return BadRequest("Invalid forecast category");
@@ -158,6 +159,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
         deal.CustomFields = customFields;
         deal.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+        await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
 
         return Ok(ToDealDetailDto(deal));
     }
@@ -187,7 +189,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
     }
 
     [HttpPost("deals/{dealId}/activities")]
-    public async Task<IActionResult> LogActivity(string dealId, LogActivityRequest request)
+    public async Task<IActionResult> LogActivity(string dealId, LogActivityRequest request, [FromServices] JobQueueService queue)
     {
         if (string.IsNullOrWhiteSpace(request.Body)) return BadRequest("Enter some notes");
         if (!ValidActivityTypes.Contains(request.Type)) return BadRequest("Invalid activity type");
@@ -204,6 +206,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             Body = request.Body,
         });
         await db.SaveChangesAsync();
+        await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
         return NoContent();
     }
 }

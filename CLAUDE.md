@@ -133,6 +133,24 @@ don't exist yet, so global search results for those two categories link to
 the (now filterable) contacts list rather than a record page — only Deal
 results have a real destination (`/pipeline/{dealId}`).
 
+Phase 3 ("Insight & modularity") has started with reporting/dashboards, per
+the `reporting-read-models` skill and `analytics-reporting-expert`. Three
+read-model tables (`PipelineSnapshot`, `ForecastSnapshot`, `ActivityMetric`)
+are refreshed by a `refresh_reports` background job triggered on the writes
+that change what a report shows (`PipelineController.MoveDeal`/`UpdateDeal`/
+`LogActivity`) — not on a timer, since this app has no periodic-job
+scheduler — plus a manual "Refresh" button (`POST /api/reports/refresh`) for
+data that predates the feature or was seeded directly and so never fired a
+trigger. `GET /api/reports` serves the `/reports` dashboard (pipeline-by-
+stage, forecast-by-category, activity-by-type, each with a CSV export
+reading the same read model — proxied through a Next.js route handler,
+`src/app/api/reports/export/route.ts`, since the browser can't call the .NET
+API directly). The conversion/funnel report from `analytics-reporting-expert`'s
+v1 set is deliberately not built yet: it needs a stage-transition-history
+table that doesn't exist (`Deal` only stores its *current* `StageId`, not a
+timestamped history of stage changes) — a real prerequisite gap, not a
+hidden scope cut.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -142,18 +160,21 @@ credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
 any actual email/calendar send capability, RAG over CRM history, enterprise
 auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
-`deal_assigned` notifications can exist), contact/company detail pages, and
-the rest of Phase 2 (email/calendar sync with consent/suppression gating,
-billing).
+`deal_assigned` notifications can exist), contact/company detail pages, deal
+stage-transition history (needed before a conversion/funnel report can
+exist), the rest of Phase 2 (email/calendar sync with consent/suppression
+gating, billing), and the rest of Phase 3 (a real vertical-starter-kit
+onboarding flow, the first optional module shipped end-to-end, and an
+accessibility audit).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
 below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
 `backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
 `devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`,
-`workspace-customization`, `csv-import-dedupe`, and `notifications-and-digests`
-have been updated for the new stack. Skills further from the migration's
-blast radius (`pipeline-kanban-board`, `reporting-read-models`,
+`workspace-customization`, `csv-import-dedupe`, `notifications-and-digests`,
+and `reporting-read-models` have been updated for the new stack. Skills
+further from the migration's blast radius (`pipeline-kanban-board`,
 `public-api-and-webhooks`, `i18n-currency-timezone`,
 `communication-consent-and-suppression`) still show
 Prisma/TypeScript-flavored schema snippets and code examples — the *patterns

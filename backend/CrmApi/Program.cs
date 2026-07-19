@@ -94,6 +94,7 @@ builder.Services.AddScoped<SummarizationService>();
 builder.Services.AddScoped<NextBestActionService>();
 builder.Services.AddScoped<ContactImportService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ReportingService>();
 builder.Services.AddSingleton<IAnthropicMessagesClient, AnthropicMessagesClient>();
 builder.Services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>();
 builder.Services.AddHostedService<JobWorker>();

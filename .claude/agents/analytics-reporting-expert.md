@@ -13,13 +13,23 @@ aggregate queries against the same tables serving the live pipeline board.
 
 ## Core reports (v1 set, per `docs/PRODUCT_SCOPE.md` Phase 3)
 
+Pipeline, Forecast, and Activity are built (`backend/CrmApi/Services/ReportingService.cs`,
+`Controllers/ReportsController.cs`, dashboard at `/reports`) — see the
+`reporting-read-models` skill for the read-model shapes and refresh
+mechanics. Not sliced "by owner"/"by rep" yet: no entity has an
+assignee/owner column in this schema at all (the same gap that blocks
+`deal_assigned`/`task_overdue` notifications), so per-rep reporting has no
+data to slice by until that's built. Add deal/task assignment first.
+
 - **Pipeline report**: open deal count/value by stage, by pipeline, by owner.
 - **Forecast report**: weighted pipeline (`amountCents × stage.probability`) and
   the commit/best-case/pipeline breakdown via `Deal.forecastCategory`, by period
   (this month/quarter) and by rep.
 - **Activity report**: Activity counts by type/rep/period — a proxy for
   engagement, useful for manager coaching conversations.
-- **Conversion/funnel report**: stage-to-stage conversion rates and average
+- **Conversion/funnel report** (not built — needs a stage-transition-history
+  table that doesn't exist yet, see `reporting-read-models`): stage-to-stage
+  conversion rates and average
   time-in-stage, which also feeds the "deal has been in this stage too long"
   signal `ai-features-architect`'s next-best-action feature uses.
 

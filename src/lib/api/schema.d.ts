@@ -1044,6 +1044,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReportsResponse"];
+                        "application/json": components["schemas"]["ReportsResponse"];
+                        "text/json": components["schemas"]["ReportsResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RefreshReportsResponse"];
+                        "application/json": components["schemas"]["RefreshReportsResponse"];
+                        "text/json": components["schemas"]["RefreshReportsResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    type?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/saved-views": {
         parameters: {
             query?: never;
@@ -1392,6 +1501,13 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ActivityReportRow: {
+            /** Format: date */
+            date: string;
+            type: string;
+            /** Format: int32 */
+            count: number | string;
+        };
         CompanyDto: {
             id: string;
             name: string;
@@ -1504,6 +1620,15 @@ export interface components {
             /** Format: int32 */
             order: number | string;
         };
+        ForecastReportRow: {
+            forecastCategory: string;
+            /** Format: int32 */
+            dealCount: number | string;
+            /** Format: int32 */
+            dealValueCents: number | string;
+            /** Format: int32 */
+            weightedValueCents: number | string;
+        };
         GoogleExchangeRequest: {
             code: string;
         };
@@ -1545,6 +1670,28 @@ export interface components {
             id: string;
             name: string;
             stages: components["schemas"]["StageDto"][];
+        };
+        PipelineReportRow: {
+            stageId: string;
+            stageName: string;
+            /** Format: int32 */
+            dealCount: number | string;
+            /** Format: int32 */
+            dealValueCents: number | string;
+            /** Format: int32 */
+            weightedValueCents: number | string;
+        };
+        RefreshReportsResponse: {
+            jobId: string;
+        };
+        ReportsResponse: {
+            dealTerm: string;
+            dealTermPlural: string;
+            pipeline: components["schemas"]["PipelineReportRow"][];
+            forecast: components["schemas"]["ForecastReportRow"][];
+            activity: components["schemas"]["ActivityReportRow"][];
+            /** Format: date-time */
+            refreshedAt: null | string;
         };
         SavedViewDto: {
             id: string;

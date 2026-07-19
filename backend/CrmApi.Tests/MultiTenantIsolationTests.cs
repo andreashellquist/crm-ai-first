@@ -272,6 +272,23 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task Reports_NeverReflectAnotherWorkspacesDeals()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        var ownerDeal = TestData.Deal(owner.Workspace, owner.Pipeline, owner.StageOne, amountCents: 999_00);
+        await WithDb(async db => { db.Deals.Add(ownerDeal); await db.SaveChangesAsync(); });
+
+        var refreshResponse = await owner.Client.PostAsync("/api/reports/refresh", content: null);
+        refreshResponse.EnsureSuccessStatusCode();
+        await ProcessAllPendingJobsAsync();
+
+        var intruderReport = await intruder.Client.GetFromJsonAsync<ReportsResponse>("/api/reports");
+        Assert.NotNull(intruderReport);
+        Assert.All(intruderReport!.Pipeline, r => Assert.Equal(0, r.DealCount));
+    }
+
+    [Fact]
     public async Task JobStatus_ForAnotherWorkspacesJob_ReturnsNotFound()
     {
         var owner = await SeedWorkspaceAsync();
