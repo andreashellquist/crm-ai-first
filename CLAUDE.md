@@ -235,11 +235,32 @@ which sets the new `WorkspaceMember.IsActive`, checked by
 this blocks new logins immediately but can't invalidate a JWT already
 issued before deactivation (this app has no server-side session store to
 revoke against — see `auth-security-expert`'s "Enterprise auth" section);
-that session stays valid until its normal 7-day expiry. SSO (SAML/OIDC) and
-custom roles/permissions — the rest of Phase 4's "Enterprise" half — remain
-unbuilt: SSO hits the same missing-real-IdP-credentials wall as Google
-OAuth, and custom roles is a deliberately separate, larger piece of work
-from provisioning.
+that session stays valid until its normal 7-day expiry.
+
+Phase 4's third sub-area, custom roles/permissions, is also in —
+`Models/Role.cs`, `Authorization/Permissions.cs`,
+`Authorization/RequirePermissionAttribute.cs`, `Controllers/RolesController.cs`,
+`Controllers/MembersController.cs`. The `owner`/`admin`/`member` system
+roles are deliberately *not* database rows — a fixed permission map in code
+(`Permissions.SystemRoleHas`), so every already-provisioned workspace's
+behavior is unchanged. `Role` rows exist only for workspace-created custom
+roles, each an explicit subset of a fixed permission catalog
+(`settings:manage`, `fields:manage`, `api_keys:manage`, `webhooks:manage`,
+`members:manage`, `roles:manage`); only `owner` carries `roles:manage` by
+default, so an admin (or any custom role) can never grant itself more
+access than an owner already allowed. `MembersController` (new — a
+workspace previously had no way to list its own members, change a role, or
+remove someone at all, outside of SCIM) is what makes a role assignable,
+and guards against removing/demoting a workspace's only remaining owner.
+`/settings` gained Members and Roles sections. **v1 scope, deliberate**:
+only `FieldDefinitionsController`'s writes are retrofitted from
+`RequireRoleAttribute` to the new permission check, as the one
+proof-it's-real integration point verified against full existing test
+coverage; `WorkspaceSettingsController`, `ApiKeysController`, and
+`WebhookSubscriptionsController` still use the original role check —
+migrating them is a mechanical follow-up, not a design gap. SSO (SAML/OIDC)
+— the last piece of Phase 4's "Enterprise" half — remains unbuilt: it hits
+the same missing-real-IdP-credentials wall as Google OAuth.
 
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
@@ -249,8 +270,8 @@ agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
 any actual email/calendar send capability, RAG over CRM history, SSO/SAML
-and custom roles/permissions (the rest of Phase 4's "Enterprise" half — SCIM
-provisioning is built, see above), task/deal assignment (needed before `task_overdue`/
+(the last piece of Phase 4's "Enterprise" half — SCIM provisioning and
+custom roles are built, see above), task/deal assignment (needed before `task_overdue`/
 `deal_assigned` notifications can exist), contact/company detail pages, deal
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression

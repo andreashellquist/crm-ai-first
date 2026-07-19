@@ -2,6 +2,8 @@ import { requireWorkspace } from "@/lib/workspace";
 import { SettingsForm } from "./settings-form";
 import { ApiKeysSection } from "./api-keys-section";
 import { WebhooksSection } from "./webhooks-section";
+import { RolesSection } from "./roles-section";
+import { MembersSection } from "./members-section";
 
 const KNOWN_MODULES = [
   { id: "listings", name: "Listings", description: "Real-estate deal extension — MLS listing agent, URL, open house, commission." },
@@ -12,6 +14,8 @@ export default async function SettingsPage() {
   const { data: settings } = await api.GET("/api/workspace/settings");
   const { data: apiKeys } = await api.GET("/api/api-keys");
   const { data: webhookSubscriptions } = await api.GET("/api/webhook-subscriptions");
+  const { data: roles } = await api.GET("/api/roles");
+  const { data: members } = await api.GET("/api/members");
 
   const terminology = settings?.terminology ?? {};
   const overrides = Object.entries(terminology).filter(([, v]) => v && typeof v === "object");
@@ -53,6 +57,16 @@ export default async function SettingsPage() {
           module is enabled.
         </p>
         <SettingsForm modules={KNOWN_MODULES} enabledModules={settings?.enabledModules ?? []} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">Members</h2>
+        <MembersSection members={members ?? []} roles={roles ?? []} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">Roles</h2>
+        <RolesSection roles={roles ?? []} />
       </section>
 
       <section className="space-y-2">

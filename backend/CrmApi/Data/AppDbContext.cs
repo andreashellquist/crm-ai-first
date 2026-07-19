@@ -28,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<Role> Roles => Set<Role>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -235,6 +236,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(d => new { d.SubscriptionId, d.Status, d.CreatedAt });
             e.HasOne(d => d.Subscription).WithMany()
                 .HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Role>(e =>
+        {
+            e.HasIndex(r => new { r.WorkspaceId, r.Name }).IsUnique();
+            e.HasOne(r => r.Workspace).WithMany()
+                .HasForeignKey(r => r.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -152,13 +152,32 @@ rely on app-layer discipline alone.
   whether it's enforced (password/OAuth login disabled) or additive, and
   default to "admin can enforce it" rather than silently disabling other
   login methods.
-- **Custom roles are not built.** The `owner`/`admin`/`member` set is the
-  v1 floor; when customers need finer-grained permissions (e.g. "can view
-  deals but not amounts," "can manage own pipeline only"), model it as a
-  permission set attached to a role rather than one-off boolean flags
-  scattered across `WorkspaceMember` — keep the permission check call
-  sites the same (`can(user, action, resource)`) so adding granularity
-  later doesn't require touching every call site again.
+- **Custom roles are built**: `Models/Role.cs`, `Authorization/Permissions.cs`,
+  `Authorization/RequirePermissionAttribute.cs`, `Controllers/RolesController.cs`,
+  `Controllers/MembersController.cs`. The `owner`/`admin`/`member` system roles
+  are deliberately *not* database rows — they're a fixed permission map in
+  `Permissions.SystemRoleHas`, so every already-provisioned workspace keeps
+  working unchanged. `Role` rows exist only for workspace-created custom
+  roles, each an explicit subset of the fixed `Permissions.All` catalog
+  (`settings:manage`, `fields:manage`, `api_keys:manage`, `webhooks:manage`,
+  `members:manage`, `roles:manage`) — a permission set attached to a role,
+  not one-off boolean flags on `WorkspaceMember`. `RequirePermissionAttribute`
+  is the call-site pattern (`[RequirePermission(Permissions.ManageFields)]`):
+  checks the system-role map first (no DB hit for the common case), falls
+  back to a `Role` lookup only for a non-system role name. Only `owner`
+  carries `roles:manage` by default, so an admin (or any custom role) can
+  never grant itself more access than an owner already allowed.
+  `MembersController` is the piece that makes a role assignable — it also
+  guards against removing/demoting a workspace's only remaining owner,
+  which would otherwise lock the workspace out of its own admin surface.
+  **v1 scope, deliberate**: only `FieldDefinitionsController`'s writes
+  are retrofitted from `RequireRoleAttribute` to the new permission check,
+  as the one proof-it's-real integration point verified against full
+  existing test coverage; `WorkspaceSettingsController`, `ApiKeysController`,
+  and `WebhookSubscriptionsController` still use the original
+  `RequireRoleAttribute` — migrating them is a mechanical follow-up
+  (swap the attribute, no behavior change for owner/admin/member), not
+  a design gap.
 - API keys (`api-platform-expert`'s `ApiKey` model, also SCIM's credential)
   go through the same audit-logging and revocation discipline as human
   credentials — a leaked API key is exactly as serious as a leaked session.

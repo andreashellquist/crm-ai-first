@@ -83,3 +83,42 @@ export async function fetchWebhookDeliveriesAction(id: string): Promise<WebhookD
   const { data } = await api.GET("/api/webhook-subscriptions/{id}/deliveries", { params: { path: { id } } });
   return data ?? [];
 }
+
+export type CreateRoleState = { error?: string };
+
+export async function createRoleAction(_prevState: CreateRoleState, formData: FormData): Promise<CreateRoleState> {
+  const { api } = await requireWorkspace();
+  const name = formData.get("name");
+  const permissions = formData.getAll("permissions").map(String);
+  if (typeof name !== "string" || !name.trim()) return { error: "Name is required" };
+
+  const { error } = await api.POST("/api/roles", { body: { name, permissions } });
+  if (error) return { error: "Could not create the role — the name may already be taken, or you may need to be an owner." };
+
+  revalidatePath("/settings");
+  return {};
+}
+
+export async function updateRolePermissionsAction(id: string, permissions: string[]) {
+  const { api } = await requireWorkspace();
+  await api.PUT("/api/roles/{id}", { params: { path: { id } }, body: { permissions } });
+  revalidatePath("/settings");
+}
+
+export async function deleteRoleAction(id: string) {
+  const { api } = await requireWorkspace();
+  await api.DELETE("/api/roles/{id}", { params: { path: { id } } });
+  revalidatePath("/settings");
+}
+
+export async function updateMemberRoleAction(id: string, role: string) {
+  const { api } = await requireWorkspace();
+  await api.PUT("/api/members/{id}/role", { params: { path: { id } }, body: { role } });
+  revalidatePath("/settings");
+}
+
+export async function removeMemberAction(id: string) {
+  const { api } = await requireWorkspace();
+  await api.DELETE("/api/members/{id}", { params: { path: { id } } });
+  revalidatePath("/settings");
+}

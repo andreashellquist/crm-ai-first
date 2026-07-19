@@ -798,6 +798,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MemberDto"][];
+                        "application/json": components["schemas"]["MemberDto"][];
+                        "text/json": components["schemas"]["MemberDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/members/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMemberRoleRequest"];
+                    "text/json": components["schemas"]["UpdateMemberRoleRequest"];
+                    "application/*+json": components["schemas"]["UpdateMemberRoleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MemberDto"];
+                        "application/json": components["schemas"]["MemberDto"];
+                        "text/json": components["schemas"]["MemberDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/members/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -1395,6 +1512,134 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RoleDto"][];
+                        "application/json": components["schemas"]["RoleDto"][];
+                        "text/json": components["schemas"]["RoleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateRoleRequest"];
+                    "text/json": components["schemas"]["CreateRoleRequest"];
+                    "application/*+json": components["schemas"]["CreateRoleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RoleDto"];
+                        "application/json": components["schemas"]["RoleDto"];
+                        "text/json": components["schemas"]["RoleDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateRoleRequest"];
+                    "text/json": components["schemas"]["UpdateRoleRequest"];
+                    "application/*+json": components["schemas"]["UpdateRoleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RoleDto"];
+                        "application/json": components["schemas"]["RoleDto"];
+                        "text/json": components["schemas"]["RoleDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -2449,6 +2694,10 @@ export interface components {
             /** Format: int32 */
             order: number | string;
         };
+        CreateRoleRequest: {
+            name: string;
+            permissions: string[];
+        };
         CreateSavedViewRequest: {
             entityType: string;
             name: string;
@@ -2579,6 +2828,16 @@ export interface components {
             workspaceId: string;
             workspaceName: string;
         };
+        MemberDto: {
+            id: string;
+            userId: string;
+            name: null | string;
+            email: string;
+            role: string;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
         MoveDealRequest: {
             stageId: string;
         };
@@ -2674,6 +2933,12 @@ export interface components {
             /** Format: date-time */
             refreshedAt: null | string;
         };
+        RoleDto: {
+            id: null | string;
+            name: string;
+            permissions: string[];
+            isSystem: boolean;
+        };
         SavedViewDto: {
             id: string;
             entityType: string;
@@ -2759,6 +3024,12 @@ export interface components {
             required: boolean;
             /** Format: int32 */
             order: number | string;
+        };
+        UpdateMemberRoleRequest: {
+            role: string;
+        };
+        UpdateRoleRequest: {
+            permissions: string[];
         };
         UpdateTaskRequest: {
             title: string;

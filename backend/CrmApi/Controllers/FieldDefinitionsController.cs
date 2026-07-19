@@ -30,7 +30,7 @@ public class FieldDefinitionsController(AppDbContext db, CurrentUser current) : 
     }
 
     [HttpPost]
-    [RequireRole("owner", "admin")]
+    [RequirePermission(Permissions.ManageFields)]
     public async Task<ActionResult<FieldDefinitionDto>> Create(CreateFieldDefinitionRequest request)
     {
         if (!ValidEntityTypes.Contains(request.EntityType)) return BadRequest("Invalid entity type");
@@ -61,7 +61,7 @@ public class FieldDefinitionsController(AppDbContext db, CurrentUser current) : 
     }
 
     [HttpPut("{id}")]
-    [RequireRole("owner", "admin")]
+    [RequirePermission(Permissions.ManageFields)]
     public async Task<ActionResult<FieldDefinitionDto>> Update(string id, UpdateFieldDefinitionRequest request)
     {
         var def = await db.FieldDefinitions.FirstOrDefaultAsync(f => f.Id == id && f.WorkspaceId == current.WorkspaceId);
@@ -82,7 +82,7 @@ public class FieldDefinitionsController(AppDbContext db, CurrentUser current) : 
     }
 
     [HttpDelete("{id}")]
-    [RequireRole("owner", "admin")]
+    [RequirePermission(Permissions.ManageFields)]
     public async Task<IActionResult> Delete(string id)
     {
         var def = await db.FieldDefinitions.FirstOrDefaultAsync(f => f.Id == id && f.WorkspaceId == current.WorkspaceId);
