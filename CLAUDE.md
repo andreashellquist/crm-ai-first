@@ -133,7 +133,7 @@ don't exist yet, so global search results for those two categories link to
 the (now filterable) contacts list rather than a record page — only Deal
 results have a real destination (`/pipeline/{dealId}`).
 
-Phase 3 ("Insight & modularity") has started with reporting/dashboards, per
+Phase 3 ("Insight & modularity") is now complete — reporting/dashboards, per
 the `reporting-read-models` skill and `analytics-reporting-expert`. Three
 read-model tables (`PipelineSnapshot`, `ForecastSnapshot`, `ActivityMetric`)
 are refreshed by a `refresh_reports` background job triggered on the writes
@@ -184,6 +184,19 @@ with no UI reachable from the app at all. The Listing panel on the deal
 detail page renders only when the module is enabled, absent entirely
 otherwise — the concrete proof that core flows don't depend on any module.
 
+Phase 3's fourth and final sub-area, a WCAG 2.1 AA accessibility audit, is
+also in — completing Phase 3. `e2e/accessibility.spec.ts` runs
+`@axe-core/playwright` against every core page (login, signup, pipeline
+board, deal detail, contacts list, contacts import, reports, settings) as a
+standing regression guard, not a one-time pass — see `frontend-engineer`'s
+"Accessibility & consistency" section for the two real, recurring issues the
+audit found and fixed (insufficient color contrast on the app's muted/
+empty-state text color, and a CSV-import file input whose `<label>` wasn't
+programmatically associated via `htmlFor`/`id`). Automated scanning covers
+the mechanically-detectable subset of WCAG (labels, contrast, roles,
+landmarks) — it is not a substitute for manual keyboard/screen-reader
+testing of new interactive patterns going forward.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -196,7 +209,8 @@ auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
 `deal_assigned` notifications can exist), contact/company detail pages, deal
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression
-gating, billing), and the rest of Phase 3 (an accessibility audit).
+gating, billing), and the rest of Phase 4 (public API/webhooks, regional
+compliance/localized billing, locale-aware formatting).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"

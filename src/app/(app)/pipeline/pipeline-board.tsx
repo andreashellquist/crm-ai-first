@@ -124,7 +124,7 @@ export function PipelineBoard({ pipeline }: { pipeline: PipelineBoard }) {
                     />
                   </div>
                 ))}
-                {stage.deals.length === 0 ? <p className="text-xs text-neutral-400">No deals</p> : null}
+                {stage.deals.length === 0 ? <p className="text-xs text-neutral-500">No deals</p> : null}
               </div>
             </div>
           );

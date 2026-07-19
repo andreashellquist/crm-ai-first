@@ -60,7 +60,7 @@ export default async function ContactsPage({
             ))}
             {contacts.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-neutral-400">
+                <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
                   No contacts match — try adjusting the filters above.
                 </td>
               </tr>

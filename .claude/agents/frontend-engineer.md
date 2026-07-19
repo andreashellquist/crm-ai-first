@@ -71,7 +71,29 @@ copy/forms — this product supports multiple markets via per-workspace settings
 ## Accessibility & consistency
 
 - All interactive elements keyboard-operable (this matters especially for the
-  Kanban board — provide a non-drag way to move a deal between stages).
+  Kanban board — provide a non-drag way to move a deal between stages; see
+  `pipeline-board.tsx`'s `<select>` fallback, same `handleMove` underneath
+  both).
 - Reuse shadcn/ui primitives rather than hand-rolling equivalents; if a pattern
   repeats 3+ times (e.g. an entity avatar+name chip), extract a shared component
   before the third copy, not after the tenth.
+- Target WCAG 2.1 AA (`docs/PRODUCT_SCOPE.md`: "ongoing from Phase 0, audited
+  at Phase 3"). `e2e/accessibility.spec.ts` runs `@axe-core/playwright`
+  against every core page (login, signup, pipeline board, deal detail,
+  contacts list, contacts import, reports, settings) as a real regression
+  guard — it catches the mechanically-detectable subset (missing form labels,
+  insufficient color contrast, missing landmarks/roles) but isn't a
+  substitute for manual keyboard/screen-reader testing of new interactive
+  patterns. The Phase 3 audit pass found and fixed two real, recurring
+  issues, both worth knowing before adding new UI:
+  - **`text-neutral-400` (Tailwind's `#a1a1a1`) fails AA contrast** against
+    white/`neutral-50` backgrounds at body/label text sizes (ratio ~2.5,
+    needs 4.5) — this was the muted/empty-state text color used throughout
+    the app. Use `text-neutral-500` for muted body text instead (it passes);
+    `text-neutral-400` is still fine for `placeholder:` text, which isn't
+    held to the same contrast bar.
+  - **A `<label>` not associated to its input via `htmlFor`/`id`** (the CSV
+    import file input had a visually-adjacent `<label>` with no `htmlFor`)
+    reads as unlabeled to assistive tech even though it looks labeled — every
+    form control needs a real `htmlFor`/`id` pair (or `aria-label` where a
+    visible label doesn't fit), not just visual proximity.

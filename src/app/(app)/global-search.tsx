@@ -76,14 +76,14 @@ export function GlobalSearch() {
 
       {open && query.trim().length >= 2 ? (
         <div className="absolute left-0 z-10 mt-1 w-96 rounded-md border border-neutral-200 bg-white shadow-lg">
-          {!results ? <p className="p-3 text-sm text-neutral-400">Searching…</p> : null}
-          {results && !hasResults ? <p className="p-3 text-sm text-neutral-400">No matches.</p> : null}
+          {!results ? <p className="p-3 text-sm text-neutral-500">Searching…</p> : null}
+          {results && !hasResults ? <p className="p-3 text-sm text-neutral-500">No matches.</p> : null}
           {results?.deals.length ? (
             <ResultGroup title="Deals">
               {results.deals.map((r) => (
                 <Link key={r.id} href={`/pipeline/${r.id}`} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
                   <span className="text-neutral-800">{r.label}</span>
-                  {r.sublabel ? <span className="ml-1 text-xs text-neutral-400">{r.sublabel}</span> : null}
+                  {r.sublabel ? <span className="ml-1 text-xs text-neutral-500">{r.sublabel}</span> : null}
                 </Link>
               ))}
             </ResultGroup>
@@ -93,7 +93,7 @@ export function GlobalSearch() {
               {results.contacts.map((r) => (
                 <Link key={r.id} href={contactsListHref()} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
                   <span className="text-neutral-800">{r.label}</span>
-                  {r.sublabel ? <span className="ml-1 text-xs text-neutral-400">{r.sublabel}</span> : null}
+                  {r.sublabel ? <span className="ml-1 text-xs text-neutral-500">{r.sublabel}</span> : null}
                 </Link>
               ))}
             </ResultGroup>
@@ -103,7 +103,7 @@ export function GlobalSearch() {
               {results.companies.map((r) => (
                 <Link key={r.id} href={contactsListHref()} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
                   <span className="text-neutral-800">{r.label}</span>
-                  {r.sublabel ? <span className="ml-1 text-xs text-neutral-400">{r.sublabel}</span> : null}
+                  {r.sublabel ? <span className="ml-1 text-xs text-neutral-500">{r.sublabel}</span> : null}
                 </Link>
               ))}
             </ResultGroup>
@@ -117,7 +117,7 @@ export function GlobalSearch() {
 function ResultGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-neutral-50 py-1 last:border-0">
-      <p className="px-3 py-1 text-xs font-medium uppercase text-neutral-400">{title}</p>
+      <p className="px-3 py-1 text-xs font-medium uppercase text-neutral-500">{title}</p>
       {children}
     </div>
   );

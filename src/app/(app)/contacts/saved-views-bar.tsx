@@ -44,7 +44,7 @@ export function SavedViewsBar({ views }: { views: SavedView[] }) {
             type="button"
             onClick={() => handleDelete(view.id)}
             aria-label={`Delete saved view "${view.name}"`}
-            className="rounded-full px-1.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
+            className="rounded-full px-1.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700"
           >
             ×
           </button>

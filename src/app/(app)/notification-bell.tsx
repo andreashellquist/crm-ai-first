@@ -112,8 +112,8 @@ export function NotificationBell() {
             ) : null}
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {loading ? <p className="p-3 text-sm text-neutral-400">Loading…</p> : null}
-            {!loading && notifications?.length === 0 ? <p className="p-3 text-sm text-neutral-400">No notifications yet.</p> : null}
+            {loading ? <p className="p-3 text-sm text-neutral-500">Loading…</p> : null}
+            {!loading && notifications?.length === 0 ? <p className="p-3 text-sm text-neutral-500">No notifications yet.</p> : null}
             {notifications?.map((notification) => {
               const href = hrefFor(notification);
               const body = (
@@ -121,7 +121,7 @@ export function NotificationBell() {
                   {!notification.readAt ? <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" aria-hidden /> : <span className="mt-1.5 h-1.5 w-1.5 shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <p className="text-neutral-800">{labelFor(notification)}</p>
-                    <p className="text-xs text-neutral-400">{new Date(notification.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-neutral-500">{new Date(notification.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
               );

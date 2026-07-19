@@ -103,7 +103,7 @@ export default async function ReportsPage() {
           </a>
         </div>
         {report.forecast.length === 0 ? (
-          <p className="text-sm text-neutral-400">No {report.dealTerm} data yet.</p>
+          <p className="text-sm text-neutral-500">No {report.dealTerm} data yet.</p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-neutral-200">
             <table className="w-full text-sm">
@@ -143,7 +143,7 @@ export default async function ReportsPage() {
           </a>
         </div>
         {activityRows.length === 0 ? (
-          <p className="text-sm text-neutral-400">No activity logged in the last 30 days.</p>
+          <p className="text-sm text-neutral-500">No activity logged in the last 30 days.</p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-neutral-200">
             <table className="w-full text-sm">

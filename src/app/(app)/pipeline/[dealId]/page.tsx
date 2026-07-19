@@ -98,7 +98,7 @@ export default async function DealDetailPage({
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-neutral-700">Activity ({deal.activities.length})</h2>
         {deal.activities.length === 0 ? (
-          <p className="text-sm text-neutral-400">No activity logged yet.</p>
+          <p className="text-sm text-neutral-500">No activity logged yet.</p>
         ) : (
           <ul className="space-y-2">
             {deal.activities.map((activity) => (

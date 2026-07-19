@@ -74,7 +74,7 @@ export function SignupForm({ templates }: { templates: VerticalTemplate[] }) {
               >
                 <div className="font-medium">{template.name}</div>
                 <div className="mt-1 text-xs text-neutral-500">{template.description}</div>
-                <div className="mt-2 text-xs text-neutral-400">
+                <div className="mt-2 text-xs text-neutral-500">
                   {template.dealTerm} pipeline: {template.stages.join(" → ")}
                 </div>
               </button>

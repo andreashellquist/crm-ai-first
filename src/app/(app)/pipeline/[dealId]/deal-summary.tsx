@@ -96,7 +96,7 @@ export function DealSummary({
           ) : null}
         </div>
       ) : (
-        <p className="text-sm text-neutral-400">No summary yet.</p>
+        <p className="text-sm text-neutral-500">No summary yet.</p>
       )}
     </div>
   );

@@ -32,7 +32,7 @@ export default async function SettingsPage() {
               const term = value as { singular?: string; plural?: string; label?: string };
               return (
                 <li key={key}>
-                  <span className="font-mono text-xs text-neutral-400">{key}</span>{" "}
+                  <span className="font-mono text-xs text-neutral-500">{key}</span>{" "}
                   {term.singular ?? term.label}
                   {term.plural ? ` / ${term.plural}` : ""}
                 </li>

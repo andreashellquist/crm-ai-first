@@ -145,9 +145,12 @@ export function ImportForm() {
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-neutral-700">CSV file</label>
+        <label htmlFor="csvFile" className="block text-sm font-medium text-neutral-700">
+          CSV file
+        </label>
         <input
           ref={fileInputRef}
+          id="csvFile"
           type="file"
           accept=".csv,text/csv"
           onChange={handleFileChange}
