@@ -4,6 +4,7 @@ import { requireWorkspace } from "@/lib/workspace";
 import { clearSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "./notification-bell";
+import { GlobalSearch } from "./global-search";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { workspaceName } = await requireWorkspace();
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          <GlobalSearch />
           <NotificationBell />
           <form
             action={async () => {

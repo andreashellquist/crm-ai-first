@@ -18,6 +18,7 @@ public class Workspace
     public WorkspaceSettings? Settings { get; set; }
     public List<FieldDefinition> FieldDefinitions { get; set; } = [];
     public List<Notification> Notifications { get; set; } = [];
+    public List<SavedView> SavedViews { get; set; } = [];
 }
 
 public class WorkspaceMember

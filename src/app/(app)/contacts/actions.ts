@@ -40,3 +40,24 @@ export async function createContactAction(
   revalidatePath("/contacts");
   return {};
 }
+
+export type SavedView = { id: string; entityType: string; name: string; queryString: string; createdAt: string };
+
+export async function listSavedViewsAction(entityType: string): Promise<SavedView[]> {
+  const { api } = await requireWorkspace();
+  const { data } = await api.GET("/api/saved-views", { params: { query: { entityType } } });
+  return data ?? [];
+}
+
+export async function createSavedViewAction(entityType: string, name: string, queryString: string): Promise<void> {
+  const { api } = await requireWorkspace();
+  const { error } = await api.POST("/api/saved-views", { body: { entityType, name, queryString } });
+  if (error) throw new Error("Could not save this view");
+  revalidatePath("/contacts");
+}
+
+export async function deleteSavedViewAction(id: string): Promise<void> {
+  const { api } = await requireWorkspace();
+  await api.DELETE("/api/saved-views/{id}", { params: { path: { id } } });
+  revalidatePath("/contacts");
+}

@@ -241,6 +241,37 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task Search_OnlyReturnsCallersWorkspace()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        var contact = TestData.Contact(owner.Workspace, "Quillfeather");
+        await WithDb(async db => { db.Contacts.Add(contact); await db.SaveChangesAsync(); });
+
+        var result = await intruder.Client.GetFromJsonAsync<SearchResultsDto>("/api/search?q=quillfeather");
+
+        Assert.NotNull(result);
+        Assert.Empty(result!.Contacts);
+    }
+
+    [Fact]
+    public async Task SavedViews_List_OnlyReturnsCallersWorkspace()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        await WithDb(async db =>
+        {
+            db.SavedViews.Add(new SavedView { WorkspaceId = owner.Workspace.Id, UserId = owner.User.Id, EntityType = "contact", Name = "Owner's view", QueryString = "q=a" });
+            await db.SaveChangesAsync();
+        });
+
+        var views = await intruder.Client.GetFromJsonAsync<List<SavedViewDto>>("/api/saved-views?entityType=contact");
+
+        Assert.NotNull(views);
+        Assert.Empty(views!);
+    }
+
+    [Fact]
     public async Task JobStatus_ForAnotherWorkspacesJob_ReturnsNotFound()
     {
         var owner = await SeedWorkspaceAsync();

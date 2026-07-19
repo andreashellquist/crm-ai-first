@@ -1,10 +1,21 @@
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
 import { NewContactForm } from "./new-contact-form";
+import { ContactFilters } from "./contact-filters";
+import { SavedViewsBar } from "./saved-views-bar";
+import { listSavedViewsAction } from "./actions";
 
-export default async function ContactsPage() {
+export default async function ContactsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; lifecycleStage?: string; sort?: string }>;
+}) {
+  const { q = "", lifecycleStage = "", sort = "-createdAt" } = await searchParams;
   const { api } = await requireWorkspace();
-  const { data } = await api.GET("/api/contacts");
+  const [{ data }, savedViews] = await Promise.all([
+    api.GET("/api/contacts", { params: { query: { q: q || undefined, lifecycleStage: lifecycleStage || undefined, sort } } }),
+    listSavedViewsAction("contact"),
+  ]);
   const contacts = data ?? [];
 
   return (
@@ -12,7 +23,7 @@ export default async function ContactsPage() {
       <div className="flex items-baseline justify-between">
         <div>
           <h1 className="text-xl font-semibold">Contacts</h1>
-          <p className="text-sm text-neutral-500">{contacts.length} total</p>
+          <p className="text-sm text-neutral-500">{contacts.length} shown</p>
         </div>
         <Link href="/contacts/import" className="text-sm text-neutral-600 underline hover:text-neutral-950">
           Import CSV
@@ -20,6 +31,11 @@ export default async function ContactsPage() {
       </div>
 
       <NewContactForm />
+
+      <div className="space-y-3 border-t border-neutral-100 pt-4">
+        <ContactFilters q={q} lifecycleStage={lifecycleStage} sort={sort} />
+        <SavedViewsBar views={savedViews} />
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-neutral-200">
         <table className="w-full text-sm">
@@ -45,7 +61,7 @@ export default async function ContactsPage() {
             {contacts.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-neutral-400">
-                  No contacts yet — add the first one above.
+                  No contacts match — try adjusting the filters above.
                 </td>
               </tr>
             ) : null}

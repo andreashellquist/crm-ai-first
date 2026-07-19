@@ -115,6 +115,24 @@ paper over with a guess). Email digests are schema-only
 (`NotificationPreference.EmailDigest`) and not consumed by anything, since
 there's no email-sending capability in this app at all yet.
 
+Search & saved views round out Phase 2 so far: a header search box
+(`GlobalSearch`, 250ms-debounced) hits `GET /api/search` for a cross-entity
+lookup — Contact (name/email), Company (name/domain), and Deal (via its
+Company's name, since `Deal` has no free-text title of its own) — grouped
+results, capped at 5 per category. It's plain `ILIKE` substring matching, a
+deliberate v1 choice over Postgres full-text search (`tsvector` + GIN index)
+per `database-schema-expert`'s "don't reach for FTS until ILIKE demonstrably
+can't keep up"/"don't index speculatively" — revisit if a workspace's
+contact/company volume ever makes it measurably slow. The contacts list
+(`ContactsController.List`) gained `q`/`lifecycleStage`/`sort` query params,
+plain-HTML-form-driven so it works without JS and stays shareable/
+bookmarkable per `frontend-engineer`'s URL-search-params convention; a
+`SavedView` (per-user, v1-scoped to the contacts list) lets a user name and
+recall a particular filter/sort combination. Contact/company detail pages
+don't exist yet, so global search results for those two categories link to
+the (now filterable) contacts list rather than a record page — only Deal
+results have a real destination (`/pipeline/{dealId}`).
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -124,8 +142,8 @@ credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
 any actual email/calendar send capability, RAG over CRM history, enterprise
 auth (SSO/SAML/SCIM), task/deal assignment (needed before `task_overdue`/
-`deal_assigned` notifications can exist), and the rest of Phase 2
-(email/calendar sync with consent/suppression gating, search/saved views,
+`deal_assigned` notifications can exist), contact/company detail pages, and
+the rest of Phase 2 (email/calendar sync with consent/suppression gating,
 billing).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +

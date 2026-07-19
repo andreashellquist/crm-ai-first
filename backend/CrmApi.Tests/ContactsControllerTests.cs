@@ -65,4 +65,51 @@ public class ContactsControllerTests(CrmApiFactory factory) : IntegrationTestBas
         Assert.NotNull(contacts);
         Assert.Equal("Newer", contacts![0].FirstName);
     }
+
+    [Fact]
+    public async Task List_WithQuery_FiltersByNameOrEmailCaseInsensitive()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var jane = TestData.Contact(ws.Workspace, "Jane");
+        jane.Email = "jane@example.com";
+        var bob = TestData.Contact(ws.Workspace, "Bob");
+        await WithDb(async db => { db.Contacts.AddRange(jane, bob); await db.SaveChangesAsync(); });
+
+        var contacts = await ws.Client.GetFromJsonAsync<List<ContactDto>>("/api/contacts?q=JANE");
+
+        Assert.NotNull(contacts);
+        var contact = Assert.Single(contacts!);
+        Assert.Equal("Jane", contact.FirstName);
+    }
+
+    [Fact]
+    public async Task List_WithLifecycleStageFilter_ReturnsOnlyMatching()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var lead = TestData.Contact(ws.Workspace, "LeadPerson");
+        var customer = TestData.Contact(ws.Workspace, "CustomerPerson");
+        customer.LifecycleStage = "customer";
+        await WithDb(async db => { db.Contacts.AddRange(lead, customer); await db.SaveChangesAsync(); });
+
+        var contacts = await ws.Client.GetFromJsonAsync<List<ContactDto>>("/api/contacts?lifecycleStage=customer");
+
+        Assert.NotNull(contacts);
+        var contact = Assert.Single(contacts!);
+        Assert.Equal("CustomerPerson", contact.FirstName);
+    }
+
+    [Fact]
+    public async Task List_SortByName_OrdersAlphabetically()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var zed = TestData.Contact(ws.Workspace, "Zed");
+        var amy = TestData.Contact(ws.Workspace, "Amy");
+        await WithDb(async db => { db.Contacts.AddRange(zed, amy); await db.SaveChangesAsync(); });
+
+        var contacts = await ws.Client.GetFromJsonAsync<List<ContactDto>>("/api/contacts?sort=name");
+
+        Assert.NotNull(contacts);
+        var names = contacts!.Select(c => c.FirstName).ToList();
+        Assert.True(names.IndexOf("Amy") < names.IndexOf("Zed"));
+    }
 }

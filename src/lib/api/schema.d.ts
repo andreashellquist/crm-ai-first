@@ -237,7 +237,11 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    q?: string;
+                    lifecycleStage?: string;
+                    sort?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1040,6 +1044,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/saved-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    entityType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SavedViewDto"][];
+                        "application/json": components["schemas"]["SavedViewDto"][];
+                        "text/json": components["schemas"]["SavedViewDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSavedViewRequest"];
+                    "text/json": components["schemas"]["CreateSavedViewRequest"];
+                    "application/*+json": components["schemas"]["CreateSavedViewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SavedViewDto"];
+                        "application/json": components["schemas"]["SavedViewDto"];
+                        "text/json": components["schemas"]["SavedViewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saved-views/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SearchResultsDto"];
+                        "application/json": components["schemas"]["SearchResultsDto"];
+                        "text/json": components["schemas"]["SearchResultsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tasks": {
         parameters: {
             query?: never;
@@ -1280,6 +1424,11 @@ export interface components {
             /** Format: int32 */
             order: number | string;
         };
+        CreateSavedViewRequest: {
+            entityType: string;
+            name: string;
+            queryString: string;
+        };
         CreateTaskRequest: {
             title: string;
             /** Format: date-time */
@@ -1397,8 +1546,26 @@ export interface components {
             name: string;
             stages: components["schemas"]["StageDto"][];
         };
+        SavedViewDto: {
+            id: string;
+            entityType: string;
+            name: string;
+            queryString: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         ScoreDealResponse: {
             jobId: string;
+        };
+        SearchResultDto: {
+            id: string;
+            label: string;
+            sublabel: null | string;
+        };
+        SearchResultsDto: {
+            contacts: components["schemas"]["SearchResultDto"][];
+            companies: components["schemas"]["SearchResultDto"][];
+            deals: components["schemas"]["SearchResultDto"][];
         };
         StageDto: {
             id: string;

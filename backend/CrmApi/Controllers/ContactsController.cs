@@ -14,14 +14,38 @@ namespace CrmApi.Controllers;
 [Authorize]
 public class ContactsController(AppDbContext db, CurrentUser current) : ControllerBase
 {
+    // q/lifecycleStage/sort are shareable/bookmarkable via URL search params
+    // (frontend-engineer's convention for record-table filters) — the same
+    // query string is also what a SavedView persists (SavedView.QueryString).
     [HttpGet]
-    public async Task<ActionResult<List<ContactDto>>> List()
+    public async Task<ActionResult<List<ContactDto>>> List(
+        [FromQuery] string? q, [FromQuery] string? lifecycleStage, [FromQuery] string? sort)
     {
-        var contacts = await db.Contacts
+        var query = db.Contacts
             .Include(c => c.Company)
-            .Where(c => c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null)
-            .OrderByDescending(c => c.CreatedAt)
-            .ToListAsync();
+            .Where(c => c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null);
+
+        if (!string.IsNullOrWhiteSpace(q) && q.Trim().Length >= 2)
+        {
+            var pattern = $"%{q.Trim()}%";
+            query = query.Where(c => EF.Functions.ILike(c.FirstName ?? "", pattern)
+                || EF.Functions.ILike(c.LastName ?? "", pattern)
+                || EF.Functions.ILike(c.Email ?? "", pattern));
+        }
+        if (!string.IsNullOrWhiteSpace(lifecycleStage))
+        {
+            query = query.Where(c => c.LifecycleStage == lifecycleStage);
+        }
+
+        query = sort switch
+        {
+            "name" => query.OrderBy(c => c.FirstName).ThenBy(c => c.LastName),
+            "-name" => query.OrderByDescending(c => c.FirstName).ThenByDescending(c => c.LastName),
+            "createdAt" => query.OrderBy(c => c.CreatedAt),
+            _ => query.OrderByDescending(c => c.CreatedAt), // "-createdAt" and the default
+        };
+
+        var contacts = await query.ToListAsync();
         return Ok(contacts.Select(ToDto).ToList());
     }
 

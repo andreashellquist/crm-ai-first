@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<SavedView> SavedViews => Set<SavedView>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -154,6 +155,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(p => new { p.UserId, p.Type }).IsUnique();
             e.HasOne(p => p.User).WithMany()
                 .HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SavedView>(e =>
+        {
+            // "My saved views for this list" — the one read pattern.
+            e.HasIndex(v => new { v.WorkspaceId, v.UserId, v.EntityType });
+            e.HasOne(v => v.Workspace).WithMany(w => w.SavedViews)
+                .HasForeignKey(v => v.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(v => v.User).WithMany()
+                .HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
