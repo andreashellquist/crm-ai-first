@@ -29,15 +29,52 @@ test("creates an API key, sees the raw key once, and can revoke it", async ({ pa
   });
   expect(apiResponse.ok()).toBeTruthy();
 
-  await keyRow.getByRole("button", { name: "Revoke" }).click();
-  await expect(page.getByText("(revoked)")).toBeVisible();
+  // The Revoke button's Server Action resolves (including its DELETE call
+  // and revalidatePath) before the click's own POST response arrives — same
+  // "don't race the optimistic UI against the real persist" reasoning as
+  // pipeline.spec.ts's stage-move test — but poll the API too rather than
+  // trusting DOM-visible state alone as proof the DB write is committed.
+  await Promise.all([
+    page.waitForResponse((res) => res.request().method() === "POST"),
+    keyRow.getByRole("button", { name: "Revoke" }).click(),
+  ]);
+  await expect(keyRow.getByText("(revoked)")).toBeVisible();
 
-  const revokedResponse = await page.request.get("http://localhost:5194/api/v1/contacts", {
-    headers: { "X-Api-Key": rawKey!.trim() },
-  });
-  expect(revokedResponse.status()).toBe(401);
+  await expect
+    .poll(async () => {
+      const response = await page.request.get("http://localhost:5194/api/v1/contacts", {
+        headers: { "X-Api-Key": rawKey!.trim() },
+      });
+      return response.status();
+    })
+    .toBe(401);
 
   expect(consoleErrors).toEqual([]);
+});
+
+// SCIM lifecycle (create/list/filter/patch-deactivate/delete, spec-shaped
+// errors, multi-tenant isolation) is covered by ScimUsersControllerTests.cs
+// in the backend suite — this only proves a workspace admin can actually
+// issue a scim:users-scoped key through the UI, since that key is what an
+// identity provider's SCIM connector would be configured with.
+test("creates a SCIM-scoped API key that authenticates the SCIM Users endpoint", async ({ page }) => {
+  await login(page);
+  await page.goto("/settings");
+
+  const keyName = `Okta SCIM ${Date.now()}`;
+  await page.getByLabel("Key name").fill(keyName);
+  await page.getByRole("checkbox", { name: "scim:users" }).check();
+  await page.getByRole("button", { name: "Create key" }).click();
+
+  await expect(page.getByText(/copy this key now/)).toBeVisible();
+  const rawKey = await page.locator("code", { hasText: "crm_live_" }).textContent();
+
+  const response = await page.request.get("http://localhost:5194/api/scim/v2/Users", {
+    headers: { "X-Api-Key": rawKey!.trim() },
+  });
+  expect(response.ok()).toBeTruthy();
+  const body = await response.json();
+  expect(body.schemas).toContain("urn:ietf:params:scim:api:messages:2.0:ListResponse");
 });
 
 // Delivery mechanics (HMAC signature, retry/backoff, terminal failure) are

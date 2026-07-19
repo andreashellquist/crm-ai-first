@@ -305,6 +305,31 @@ public class MultiTenantIsolationTests(CrmApiFactory factory) : IntegrationTestB
     }
 
     [Fact]
+    public async Task Scim_TokenFromOneWorkspace_CannotReadOrDeactivateAnotherWorkspacesMember()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+
+        var intruderScimKey = await CreateApiKeyAsync(intruder.Workspace.Id, intruder.User.Id, "scim:users");
+        var intruderScimClient = ApiKeyClient(intruderScimKey);
+
+        // owner.User's own WorkspaceMember row (seeded as workspace owner) —
+        // guessing its id must not work from a different workspace's token.
+        var ownerMemberId = await WithDb(db => db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == owner.Workspace.Id && m.UserId == owner.User.Id)
+            .Select(m => m.Id).SingleAsync());
+
+        var getResponse = await intruderScimClient.GetAsync($"/api/scim/v2/Users/{ownerMemberId}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+
+        var deleteResponse = await intruderScimClient.DeleteAsync($"/api/scim/v2/Users/{ownerMemberId}");
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+
+        var stillActive = await WithDb(db => db.WorkspaceMembers.SingleAsync(m => m.Id == ownerMemberId));
+        Assert.True(stillActive.IsActive);
+    }
+
+    [Fact]
     public async Task Reports_NeverReflectAnotherWorkspacesDeals()
     {
         var owner = await SeedWorkspaceAsync();

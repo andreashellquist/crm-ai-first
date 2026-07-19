@@ -8,7 +8,7 @@ import type { components } from "@/lib/api/schema";
 
 type ApiKey = components["schemas"]["ApiKeyDto"];
 
-const SCOPES = ["contacts:read", "companies:read", "deals:read", "field-definitions:read"];
+const SCOPES = ["contacts:read", "companies:read", "deals:read", "field-definitions:read", "scim:users"];
 
 const initialState: CreateApiKeyState = {};
 
@@ -21,7 +21,9 @@ export function ApiKeysSection({ apiKeys }: { apiKeys: ApiKey[] }) {
       <p className="text-sm text-neutral-500">
         API keys authenticate the public v1 API (<code className="font-mono text-xs">X-Api-Key</code> header) for a
         customer&apos;s own integrations — see <code className="font-mono text-xs">GET /api/v1/contacts</code> and
-        friends.
+        friends. A key with the <code className="font-mono text-xs">scim:users</code> scope authenticates an
+        identity provider&apos;s SCIM 2.0 connector instead, at{" "}
+        <code className="font-mono text-xs">/api/scim/v2/Users</code>.
       </p>
 
       {apiKeys.length === 0 ? (

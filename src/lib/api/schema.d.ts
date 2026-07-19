@@ -1501,6 +1501,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scim/v2/Users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    filter?: string;
+                    startIndex?: number | string;
+                    count?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ScimCreateUserRequest"];
+                    "text/json": components["schemas"]["ScimCreateUserRequest"];
+                    "application/*+json": components["schemas"]["ScimCreateUserRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scim/v2/Users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ScimReplaceUserRequest"];
+                    "text/json": components["schemas"]["ScimReplaceUserRequest"];
+                    "application/*+json": components["schemas"]["ScimReplaceUserRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ScimPatchRequest"];
+                    "text/json": components["schemas"]["ScimPatchRequest"];
+                    "application/*+json": components["schemas"]["ScimPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/search": {
         parameters: {
             query?: never;
@@ -2390,6 +2554,7 @@ export interface components {
             lastError: null | string;
             result: null | string;
         };
+        JsonElement: unknown;
         ListingDto: {
             dealId: string;
             listingAgentName: null | string;
@@ -2516,6 +2681,28 @@ export interface components {
             queryString: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        ScimCreateUserRequest: {
+            userName: string;
+            name: null | components["schemas"]["ScimName"];
+            active: null | boolean;
+        };
+        ScimName: {
+            givenName: null | string;
+            familyName: null | string;
+        };
+        ScimPatchOperation: {
+            op: string;
+            path: null | string;
+            value: components["schemas"]["JsonElement"];
+        };
+        ScimPatchRequest: {
+            schemas: null | string[];
+            Operations: components["schemas"]["ScimPatchOperation"][];
+        };
+        ScimReplaceUserRequest: {
+            name: null | components["schemas"]["ScimName"];
+            active: null | boolean;
         };
         ScoreDealResponse: {
             jobId: string;

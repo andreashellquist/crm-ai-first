@@ -152,10 +152,14 @@ public class AuthController(AppDbContext db, JwtService jwt, ILogger<AuthControl
 
     // First membership only — no workspace-switching UI yet, matches the
     // Next.js walking skeleton's requireWorkspace() behavior.
+    // Excludes SCIM-deactivated memberships (WorkspaceMember.IsActive) — a
+    // deactivated member can't sign in via any path (password or Google),
+    // same as having no membership at all. Doesn't revoke an
+    // already-issued JWT (see ScimUsersController / auth-security-expert).
     private Task<WorkspaceMember?> FirstMembershipAsync(string userId) =>
         db.WorkspaceMembers
             .Include(m => m.Workspace)
-            .Where(m => m.UserId == userId)
+            .Where(m => m.UserId == userId && m.IsActive)
             .OrderBy(m => m.CreatedAt)
             .FirstOrDefaultAsync();
 }

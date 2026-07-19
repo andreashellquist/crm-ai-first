@@ -21,6 +21,12 @@ public class ApiKeysController(AppDbContext db, CurrentUser current) : Controlle
     public static readonly string[] ValidScopes =
     [
         "contacts:read", "companies:read", "deals:read", "field-definitions:read",
+        // Deliberately reuses the same credential/scoping infrastructure as
+        // customer-integration keys rather than a parallel secret system —
+        // a SCIM token is, mechanically, just a bearer credential scoped to
+        // one job (see ScimUsersController / the public-api-and-webhooks
+        // and auth-security-expert skills).
+        "scim:users",
     ];
 
     [HttpGet]

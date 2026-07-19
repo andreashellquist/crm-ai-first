@@ -39,6 +39,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<WorkspaceMember>(e =>
         {
             e.HasIndex(m => new { m.WorkspaceId, m.UserId }).IsUnique();
+            // Explicit defaults matter here — without them, EF Core's
+            // migration generator backfills existing rows with the CLR
+            // default (false / DateTime.MinValue), which for IsActive would
+            // lock out every already-provisioned member the moment this
+            // column's migration ran.
+            e.Property(m => m.IsActive).HasDefaultValue(true);
+            e.Property(m => m.UpdatedAt).HasDefaultValueSql("now()");
             e.HasOne(m => m.Workspace).WithMany(w => w.Members)
                 .HasForeignKey(m => m.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(m => m.User).WithMany(u => u.Memberships)

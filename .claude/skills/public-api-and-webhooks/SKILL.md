@@ -55,6 +55,13 @@ public class ApiKey
 - `ApiKeysController` (session-JWT-authenticated, `[RequireRole("owner",
   "admin")]` to create/revoke — any member can list) is where a workspace
   manages its own keys.
+- **This same credential/scoping infrastructure is reused for SCIM**: a key
+  carrying the `scim:users` scope authenticates an identity provider's SCIM
+  2.0 connector at `Controllers/ScimUsersController.cs`
+  (`/api/scim/v2/Users`) — deliberately not a parallel secret system. See
+  `auth-security-expert`'s "Enterprise auth" section for the SCIM
+  provisioning/deprovisioning details and its one real limitation (no
+  server-side session store to revoke an already-issued JWT against).
 
 ## Resource design
 

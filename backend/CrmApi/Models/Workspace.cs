@@ -28,7 +28,16 @@ public class WorkspaceMember
     public required string UserId { get; set; }
     public string Role { get; set; } = "member"; // owner | admin | member
     public string Timezone { get; set; } = "UTC";
+    // Per-workspace access, not a whole-account flag — a SCIM-deprovisioned
+    // user loses access to *this* workspace, not necessarily every
+    // workspace they belong to. Set false by ScimUsersController; checked by
+    // AuthController.Login. Note this doesn't revoke an already-issued JWT
+    // (see auth-security-expert: this app has no server-side session store
+    // to revoke against) — it blocks new logins, not existing sessions
+    // until they expire.
+    public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public Workspace? Workspace { get; set; }
     public User? User { get; set; }

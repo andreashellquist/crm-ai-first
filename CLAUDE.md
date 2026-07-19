@@ -220,6 +220,27 @@ dropping events. `/settings` gained API-key and webhook-management sections
 write scopes and real cursor pagination are a follow-up once a concrete
 integration needs them, not a hidden gap.
 
+Phase 4's second sub-area, SCIM user provisioning, is also in —
+`Controllers/ScimUsersController.cs` implements RFC 7644's core `/Users`
+resource (`api/scim/v2/Users`: list with `userName eq` filtering, get,
+create, replace, patch, delete, spec-shaped JSON including the
+capitalized-against-the-grain `Resources`/`Operations` attributes) for
+IdP-driven provisioning, deliberately authenticated by the same `ApiKey`
+infrastructure as the public API rather than a parallel secret system — a
+key carrying the new `scim:users` scope is what an identity provider's SCIM
+connector is configured with. Deprovisioning is the operation real IdPs
+actually send (`PATCH {"op":"replace","path":"active","value":false}`),
+which sets the new `WorkspaceMember.IsActive`, checked by
+`AuthController.Login` on every login attempt. **Real, stated limitation**:
+this blocks new logins immediately but can't invalidate a JWT already
+issued before deactivation (this app has no server-side session store to
+revoke against — see `auth-security-expert`'s "Enterprise auth" section);
+that session stays valid until its normal 7-day expiry. SSO (SAML/OIDC) and
+custom roles/permissions — the rest of Phase 4's "Enterprise" half — remain
+unbuilt: SSO hits the same missing-real-IdP-credentials wall as Google
+OAuth, and custom roles is a deliberately separate, larger piece of work
+from provisioning.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -227,9 +248,9 @@ feature area; it says what phase the feature belongs to and which expert
 agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
-any actual email/calendar send capability, RAG over CRM history, enterprise
-auth (SSO/SAML/SCIM, custom roles/permissions — the rest of Phase 4's
-"Enterprise" half), task/deal assignment (needed before `task_overdue`/
+any actual email/calendar send capability, RAG over CRM history, SSO/SAML
+and custom roles/permissions (the rest of Phase 4's "Enterprise" half — SCIM
+provisioning is built, see above), task/deal assignment (needed before `task_overdue`/
 `deal_assigned` notifications can exist), contact/company detail pages, deal
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression

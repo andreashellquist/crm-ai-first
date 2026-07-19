@@ -127,24 +127,41 @@ rely on app-layer discipline alone.
 
 ## Enterprise auth (Phase 4, per `docs/PRODUCT_SCOPE.md`)
 
-- **SSO (SAML/OIDC)**: per-workspace SSO configuration, not a global setting —
-  a workspace admin connects their IdP; when enabled, decide explicitly whether
-  it's enforced (password/OAuth login disabled) or additive, and default to
-  "admin can enforce it" rather than silently disabling other login methods.
-- **SCIM provisioning**: automated user provisioning/deprovisioning from the
-  customer's IdP maps to `WorkspaceMember` create/deactivate — a deprovisioned
-  user must lose access immediately (session invalidation), not just stop
-  appearing in a directory sync.
-- **Custom roles**: the `owner`/`admin`/`member` set is the v1 floor; when
-  customers need finer-grained permissions (e.g. "can view deals but not
-  amounts," "can manage own pipeline only"), model it as a permission set
-  attached to a role rather than one-off boolean flags scattered across
-  `WorkspaceMember` — keep the permission check call sites the same
-  (`can(user, action, resource)`) so adding granularity later doesn't require
-  touching every call site again.
-- API keys (`api-platform-expert`'s `ApiKey` model) go through the same audit-
-  logging and revocation discipline as human credentials — a leaked API key is
-  exactly as serious as a leaked session.
+- **SCIM provisioning is built**: `Controllers/ScimUsersController.cs`
+  implements RFC 7644's core `/Users` resource (`api/scim/v2/Users` —
+  list/filter/get/create/replace/patch/delete) for IdP-driven provisioning,
+  authenticated by an `ApiKey` carrying the `scim:users` scope (deliberately
+  reusing that credential/scoping infrastructure rather than a parallel
+  secret system — see `public-api-and-webhooks`). Deprovisioning
+  (`PATCH {"op":"replace","path":"active","value":false}`, the operation
+  real IdPs actually send) sets `WorkspaceMember.IsActive = false`, checked
+  by `AuthController.Login` on every subsequent login attempt.
+  **Real, deliberate limitation, not a hidden gap**: this app has no
+  server-side session/token store to revoke against (JWTs are stateless per
+  `CLAUDE.md`'s "Chosen stack") — deactivation blocks *new* logins
+  immediately but does not invalidate a JWT already issued before
+  deactivation; that session remains valid until its normal 7-day expiry.
+  Closing that gap needs either short-lived tokens + refresh, or a
+  revocation list — a real follow-up, tracked here rather than silently
+  assumed away.
+- **SSO (SAML/OIDC) is not built.** Same blocker as Google OAuth
+  (`GoogleOAuth:ClientId`/`ClientSecret` ship blank): this agent can't
+  provision real IdP credentials/metadata to test against. When it is
+  built: per-workspace SSO configuration, not a global setting — a
+  workspace admin connects their IdP; when enabled, decide explicitly
+  whether it's enforced (password/OAuth login disabled) or additive, and
+  default to "admin can enforce it" rather than silently disabling other
+  login methods.
+- **Custom roles are not built.** The `owner`/`admin`/`member` set is the
+  v1 floor; when customers need finer-grained permissions (e.g. "can view
+  deals but not amounts," "can manage own pipeline only"), model it as a
+  permission set attached to a role rather than one-off boolean flags
+  scattered across `WorkspaceMember` — keep the permission check call
+  sites the same (`can(user, action, resource)`) so adding granularity
+  later doesn't require touching every call site again.
+- API keys (`api-platform-expert`'s `ApiKey` model, also SCIM's credential)
+  go through the same audit-logging and revocation discipline as human
+  credentials — a leaked API key is exactly as serious as a leaked session.
 
 ## Scope boundary: this agent vs. regional-compliance-expert
 
