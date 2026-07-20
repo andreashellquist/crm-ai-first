@@ -144,14 +144,41 @@ rely on app-layer discipline alone.
   Closing that gap needs either short-lived tokens + refresh, or a
   revocation list — a real follow-up, tracked here rather than silently
   assumed away.
-- **SSO (SAML/OIDC) is not built.** Same blocker as Google OAuth
-  (`GoogleOAuth:ClientId`/`ClientSecret` ship blank): this agent can't
-  provision real IdP credentials/metadata to test against. When it is
-  built: per-workspace SSO configuration, not a global setting — a
-  workspace admin connects their IdP; when enabled, decide explicitly
-  whether it's enforced (password/OAuth login disabled) or additive, and
-  default to "admin can enforce it" rather than silently disabling other
-  login methods.
+- **SSO is built, as a generic per-workspace OIDC connector** (not SAML —
+  every mainstream enterprise IdP that matters here, Okta/Azure AD/Google
+  Workspace, speaks OIDC, and one well-built protocol beat a half-built
+  pair). `Models/SsoConnection.cs`, `Services/IOidcClient.cs`/`OidcClient.cs`,
+  `Controllers/SsoController.cs`. **SCAFFOLD ONLY, same shape as
+  GoogleOAuthClient**: the discovery → authorization-code exchange →
+  userinfo flow is real and fully covered against a fake
+  (`CrmApi.Tests/FakeOidcClient.cs`), but this agent still can't provision a
+  real IdP to test against, so sign-in only works once a workspace admin
+  points `Issuer`/`ClientId`/`ClientSecret` at a real one — same blocker as
+  `GoogleOAuth:ClientId`/`ClientSecret` shipping blank. Per-workspace
+  configuration, not a global setting (`GET`/`PUT`/`DELETE
+  /api/workspace/sso`, owner/admin to write) — a connection is keyed by an
+  `EmailDomain` (globally unique across workspaces, since it's what routes
+  an unauthenticated visitor at `/sso` to the right IdP before they've
+  proven who they are). First-time sign-in is JIT provisioning *into that
+  connection's existing workspace* — deliberately not a fresh-workspace
+  flow like `GoogleExchange`, since the workspace already exists by
+  construction (an admin had to configure the connection on it first).
+  `SsoConnection.Enforced` is off by default and must be explicitly turned
+  on to disable password login for a matching domain — checked in
+  `AuthController.Login` before the password-hash step, returning 403 (not
+  401) so the frontend can surface "use SSO instead" rather than a generic
+  bad-credentials message — exactly the "admin can enforce it, never
+  silently disable other login methods" default this section called for
+  before SSO existed. **Real, deliberate scope limits, not hidden gaps**:
+  no JWKS/ID-token signature verification — trusts the token/userinfo
+  endpoints directly over server-to-server TLS, the same simplification
+  `GoogleOAuthClient` already makes, rather than adding a JWKS fetch/cache/
+  verify pipeline no real IdP has exercised yet; `SsoConnection.ClientSecret`
+  is stored in plaintext, matching this codebase's pre-existing
+  `WebhookSubscription.Secret` precedent rather than inventing a one-off
+  encryption scheme — encrypting third-party credentials at rest (this
+  section's own longstanding guidance) is still not implemented anywhere in
+  this app, SSO included, and remains a real, shared follow-up.
 - **Custom roles are built**: `Models/Role.cs`, `Authorization/Permissions.cs`,
   `Authorization/RequirePermissionAttribute.cs`, `Controllers/RolesController.cs`,
   `Controllers/MembersController.cs`. The `owner`/`admin`/`member` system roles

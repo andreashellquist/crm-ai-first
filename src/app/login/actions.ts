@@ -17,6 +17,7 @@ export async function loginAction(_prevState: string | undefined, formData: Form
   });
 
   if (!data) {
+    if (response.status === 403) return "This workspace requires single sign-on — use the SSO sign-in link instead.";
     return response.status === 401 ? "Invalid email or password." : "Sign-in failed — try again.";
   }
 

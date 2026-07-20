@@ -258,9 +258,7 @@ only `FieldDefinitionsController`'s writes are retrofitted from
 proof-it's-real integration point verified against full existing test
 coverage; `WorkspaceSettingsController`, `ApiKeysController`, and
 `WebhookSubscriptionsController` still use the original role check —
-migrating them is a mechanical follow-up, not a design gap. SSO (SAML/OIDC)
-— the last piece of Phase 4's "Enterprise" half — remains unbuilt: it hits
-the same missing-real-IdP-credentials wall as Google OAuth.
+migrating them is a mechanical follow-up, not a design gap.
 
 Phase 4's fourth sub-area, locale-aware currency/timezone formatting, is also
 in, per the `i18n-currency-timezone` skill. `Workspace.DefaultCurrency` and
@@ -292,6 +290,44 @@ not a design gap — and there's no per-user locale field yet (only
 `Timezone`), so number/date *layout* (not just currency/timezone
 *correctness*) still hardcodes `en-US`-shaped formatting.
 
+Phase 4's fifth sub-area, SSO (SAML/OIDC) — the last piece of the
+"Enterprise" half — is also in, built as a generic per-workspace OIDC
+connector rather than SAML (most enterprise IdPs — Okta, Azure AD, Google
+Workspace — support OIDC; picking one protocol well beat a half-built pair).
+`Models/SsoConnection.cs`, `Services/IOidcClient.cs`/`OidcClient.cs`,
+`Controllers/SsoController.cs`. Same **SCAFFOLD ONLY** treatment as
+`GoogleOAuthClient`: the full discovery → authorization-code exchange →
+JIT-provisioning flow is real, reviewable, and covered end-to-end against a
+fake OIDC client (`FakeOidcClient`, mirroring `FakeGoogleOAuthClient`) in
+the xUnit suite, but unusable in practice until a workspace admin points it
+at a real IdP — this agent has no real IdP to register a client against,
+identical to the Google OAuth blocker. A connection is scoped to one
+workspace (`GET`/`PUT`/`DELETE /api/workspace/sso`, owner/admin to write)
+and keyed by an `EmailDomain` (globally unique across workspaces) that
+routes an unauthenticated sign-in attempt — entered on the new `/sso`
+page — to the right IdP before the user has proven who they are.
+First-time SSO sign-in is **just-in-time provisioning into the connection's
+existing workspace**, deliberately not a fresh-workspace flow like
+`GoogleExchange`: the workspace already exists (an admin configured the
+connection on it), so there's no template-picker step and no reason to spin
+up a new one. `SsoConnection.Enforced` lets an admin require SSO for a
+matching domain — checked in `AuthController.Login` before the password
+hash step, returning 403 (not 401, so the frontend can show "use SSO
+instead" rather than a generic bad-credentials message) — off by default
+per `auth-security-expert`'s "admin can enforce it, never silently disable
+other login methods" guidance. `/settings` gained a "Single sign-on"
+section. **Real, deliberate scope limits**: no JWKS/ID-token signature
+verification (trusts the token/userinfo endpoints over a direct
+server-to-server TLS connection instead, same simplification
+`GoogleOAuthClient` already makes); `SsoConnection.ClientSecret` is
+plaintext at rest, matching this codebase's pre-existing
+`WebhookSubscription.Secret` precedent rather than a bespoke encryption
+scheme — both are a real, tracked follow-up (`auth-security-expert`'s
+"encrypt third-party credentials at rest," not yet implemented anywhere in
+this app); and there's no e2e test exercising the actual IdP redirect for
+the same reason there isn't one for Google — no real IdP is reachable from
+this sandbox.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -299,15 +335,13 @@ feature area; it says what phase the feature belongs to and which expert
 agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
-any actual email/calendar send capability, RAG over CRM history, SSO/SAML
-(the last piece of Phase 4's "Enterprise" half — SCIM provisioning and
-custom roles are built, see above), task/deal assignment (needed before `task_overdue`/
-`deal_assigned` notifications can exist), contact/company detail pages, deal
-stage-transition history (needed before a conversion/funnel report can
-exist), the rest of Phase 2 (email/calendar sync with consent/suppression
-gating, billing), and the rest of Phase 4 (regional compliance/localized
-billing, SOC 2 readiness — locale-aware currency/timezone formatting is now
-built, see above).
+any actual email/calendar send capability, RAG over CRM history, task/deal
+assignment (needed before `task_overdue`/`deal_assigned` notifications can
+exist), contact/company detail pages, deal stage-transition history (needed
+before a conversion/funnel report can exist), the rest of Phase 2 (email/
+calendar sync with consent/suppression gating, billing), and the rest of
+Phase 4 (regional compliance/localized billing, SOC 2 readiness — Phase 4's
+"Enterprise" half, SSO included, is now fully built, see above).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"

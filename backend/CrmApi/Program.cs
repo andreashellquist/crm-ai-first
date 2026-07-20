@@ -106,6 +106,7 @@ builder.Services.AddScoped<WebhookDeliveryService>();
 builder.Services.AddHttpClient("webhooks", c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<IAnthropicMessagesClient, AnthropicMessagesClient>();
 builder.Services.AddHttpClient<IGoogleOAuthClient, GoogleOAuthClient>();
+builder.Services.AddHttpClient<IOidcClient, OidcClient>();
 builder.Services.AddHostedService<JobWorker>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]

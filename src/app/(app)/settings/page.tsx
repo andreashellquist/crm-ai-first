@@ -6,6 +6,7 @@ import { ApiKeysSection } from "./api-keys-section";
 import { WebhooksSection } from "./webhooks-section";
 import { RolesSection } from "./roles-section";
 import { MembersSection } from "./members-section";
+import { SsoSection } from "./sso-section";
 
 const KNOWN_MODULES = [
   { id: "listings", name: "Listings", description: "Real-estate deal extension — MLS listing agent, URL, open house, commission." },
@@ -19,6 +20,7 @@ export default async function SettingsPage() {
   const { data: roles } = await api.GET("/api/roles");
   const { data: members } = await api.GET("/api/members");
   const { data: me } = await api.GET("/api/me");
+  const { data: ssoConnection } = await api.GET("/api/workspace/sso");
 
   const terminology = settings?.terminology ?? {};
   const overrides = Object.entries(terminology).filter(([, v]) => v && typeof v === "object");
@@ -86,6 +88,15 @@ export default async function SettingsPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-medium">Roles</h2>
         <RolesSection roles={roles ?? []} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">Single sign-on</h2>
+        <p className="text-sm text-neutral-500">
+          Connect an OIDC identity provider (Okta, Azure AD, Google Workspace, etc.) so members with a matching email
+          domain can sign in through it.
+        </p>
+        <SsoSection connection={ssoConnection ?? null} />
       </section>
 
       <section className="space-y-2">

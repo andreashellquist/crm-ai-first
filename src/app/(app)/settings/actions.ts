@@ -43,6 +43,31 @@ export async function updateProfileAction(_prevState: string | undefined, formDa
   return undefined;
 }
 
+export type UpdateSsoState = { error?: string };
+
+export async function updateSsoAction(_prevState: UpdateSsoState, formData: FormData): Promise<UpdateSsoState> {
+  const { api } = await requireWorkspace();
+  const issuer = String(formData.get("issuer") ?? "");
+  const clientId = String(formData.get("clientId") ?? "");
+  const clientSecret = String(formData.get("clientSecret") ?? "");
+  const emailDomain = String(formData.get("emailDomain") ?? "");
+  const enforced = formData.get("enforced") === "on";
+
+  const { error } = await api.PUT("/api/workspace/sso", {
+    body: { issuer, clientId, clientSecret, emailDomain, enforced, isActive: true },
+  });
+
+  if (error) return { error: "Could not save the SSO connection — check the issuer/domain, or you may need to be an owner or admin." };
+  revalidatePath("/settings");
+  return {};
+}
+
+export async function deleteSsoAction() {
+  const { api } = await requireWorkspace();
+  await api.DELETE("/api/workspace/sso");
+  revalidatePath("/settings");
+}
+
 export type CreateApiKeyState = { error?: string; rawKey?: string; keyName?: string };
 
 export async function createApiKeyAction(_prevState: CreateApiKeyState, formData: FormData): Promise<CreateApiKeyState> {

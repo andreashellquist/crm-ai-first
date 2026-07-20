@@ -29,6 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<SsoConnection> SsoConnections => Set<SsoConnection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -243,6 +244,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(r => new { r.WorkspaceId, r.Name }).IsUnique();
             e.HasOne(r => r.Workspace).WithMany()
                 .HasForeignKey(r => r.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SsoConnection>(e =>
+        {
+            // One connection per workspace in v1 — PUT replaces it wholesale
+            // rather than supporting multiple IdPs per workspace.
+            e.HasIndex(s => s.WorkspaceId).IsUnique();
+            // EmailDomain routes an unauthenticated sign-in attempt to a
+            // workspace before login — must be globally unique, or two
+            // workspaces could shadow each other's domain.
+            e.HasIndex(s => s.EmailDomain).IsUnique();
+            e.HasOne(s => s.Workspace).WithMany()
+                .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -2013,6 +2013,173 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspace/sso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SsoConnectionDto"];
+                        "application/json": components["schemas"]["SsoConnectionDto"];
+                        "text/json": components["schemas"]["SsoConnectionDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateSsoConnectionRequest"];
+                    "text/json": components["schemas"]["UpdateSsoConnectionRequest"];
+                    "application/*+json": components["schemas"]["UpdateSsoConnectionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SsoConnectionDto"];
+                        "application/json": components["schemas"]["SsoConnectionDto"];
+                        "text/json": components["schemas"]["SsoConnectionDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sso/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SsoStartRequest"];
+                    "text/json": components["schemas"]["SsoStartRequest"];
+                    "application/*+json": components["schemas"]["SsoStartRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SsoStartResponse"];
+                        "application/json": components["schemas"]["SsoStartResponse"];
+                        "text/json": components["schemas"]["SsoStartResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sso/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SsoExchangeRequest"];
+                    "text/json": components["schemas"]["SsoExchangeRequest"];
+                    "application/*+json": components["schemas"]["SsoExchangeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LoginResponse"];
+                        "application/json": components["schemas"]["LoginResponse"];
+                        "text/json": components["schemas"]["LoginResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tasks": {
         parameters: {
             query?: never;
@@ -3056,6 +3223,30 @@ export interface components {
             companies: components["schemas"]["SearchResultDto"][];
             deals: components["schemas"]["SearchResultDto"][];
         };
+        SsoConnectionDto: {
+            id: string;
+            issuer: string;
+            clientId: string;
+            emailDomain: string;
+            enforced: boolean;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SsoExchangeRequest: {
+            state: string;
+            code: string;
+            redirectUri: string;
+        };
+        SsoStartRequest: {
+            email: string;
+            redirectUri: string;
+        };
+        SsoStartResponse: {
+            found: boolean;
+            authorizationUrl: null | string;
+            state: null | string;
+        };
         StageDto: {
             id: string;
             name: string;
@@ -3108,6 +3299,14 @@ export interface components {
         };
         UpdateRoleRequest: {
             permissions: string[];
+        };
+        UpdateSsoConnectionRequest: {
+            issuer: string;
+            clientId: string;
+            clientSecret: string;
+            emailDomain: string;
+            enforced: boolean;
+            isActive: boolean;
         };
         UpdateTaskRequest: {
             title: string;

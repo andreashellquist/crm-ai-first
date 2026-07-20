@@ -28,6 +28,7 @@ public class CrmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public FakeAnthropicMessagesClient Anthropic { get; } = new();
     public FakeGoogleOAuthClient GoogleOAuth { get; } = new();
+    public FakeOidcClient Oidc { get; } = new();
     public FakeWebhookHttpMessageHandler WebhookHandler { get; } = new();
 
     static CrmApiFactory()
@@ -49,6 +50,8 @@ public class CrmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddSingleton<IAnthropicMessagesClient>(Anthropic);
             services.RemoveAll<IGoogleOAuthClient>();
             services.AddSingleton<IGoogleOAuthClient>(GoogleOAuth);
+            services.RemoveAll<IOidcClient>();
+            services.AddSingleton<IOidcClient>(Oidc);
             // Overrides Program.cs's "webhooks" named client's primary
             // handler — applied after Program.cs's own AddHttpClient
             // registration, which wins since HttpClientFactory applies

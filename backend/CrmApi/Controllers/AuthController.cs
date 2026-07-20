@@ -21,8 +21,23 @@ public class AuthController(AppDbContext db, JwtService jwt, ILogger<AuthControl
         var membership = await FirstMembershipAsync(user.Id);
         if (membership?.Workspace is null) return Unauthorized();
 
+        if (await SsoEnforcedForAsync(membership.WorkspaceId, request.Email))
+            return StatusCode(StatusCodes.Status403Forbidden, "This workspace requires single sign-on — use the SSO sign-in link instead.");
+
         var token = jwt.GenerateToken(user.Id, membership.WorkspaceId, membership.Role);
         return Ok(new LoginResponse(token, membership.WorkspaceId, membership.Workspace.Name));
+    }
+
+    // A workspace admin can require SSO for a matching email domain (see
+    // SsoController/SsoConnection.Enforced) — checked here rather than
+    // rejecting at the password-hash step, so the error is specific
+    // ("use SSO instead") rather than indistinguishable from a wrong
+    // password.
+    private async Task<bool> SsoEnforcedForAsync(string workspaceId, string email)
+    {
+        var domain = email.Split('@', 2).ElementAtOrDefault(1)?.ToLowerInvariant();
+        if (domain is null) return false;
+        return await db.SsoConnections.AnyAsync(c => c.WorkspaceId == workspaceId && c.EmailDomain == domain && c.IsActive && c.Enforced);
     }
 
     // Public — read before a user has an account, so the signup page can

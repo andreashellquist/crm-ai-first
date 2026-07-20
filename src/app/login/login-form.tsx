@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   oauth_failed: "Google sign-in failed — try again.",
   google_not_configured: "Google sign-in isn't set up for this environment yet.",
+  sso_failed: "Single sign-on failed — try again.",
 };
 
 export function LoginForm() {
@@ -63,6 +64,13 @@ export function LoginForm() {
       >
         Sign in with Google
       </a>
+
+      <Link
+        href="/sso"
+        className="flex w-full items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
+      >
+        Sign in with SSO
+      </Link>
 
       <p className="text-center text-xs text-neutral-500">
         New here?{" "}
