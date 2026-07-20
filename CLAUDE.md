@@ -398,6 +398,38 @@ hand-roll). **This completes Phase 4** — every row in `docs/PRODUCT_SCOPE.md`
 explicitly non-code (legal/tax characterization), a grounded analysis
 document.
 
+Immediately past Phase 4, the first of `docs/REGIONAL_COMPLIANCE.md`'s two
+surfaced gaps is closed: **data-subject export and erasure now exist**
+(`ContactsController.Export`/`Erase`, `auth-security-expert`'s "Data-subject
+requests" section — "design contact/company deletion as a real cascade or
+documented anonymization from day one"). `GET /api/contacts/{id}/export`
+returns everything this CRM holds on a contact — their own PII, associated
+activities, and associated deals — as a downloadable JSON file (proxied
+through `src/app/api/contacts/[id]/export/route.ts`, same server-to-server
+pattern as the reports CSV export, since the browser can't call the .NET API
+directly). `DELETE /api/contacts/{id}` fulfills erasure via **anonymization,
+not a hard delete**: it nulls the contact's own PII fields (name, email,
+phone, custom fields) and sets `DeletedAt`, but leaves the row and its
+Deal/Activity associations intact, since those are this workspace's own
+business records, not the data subject's personal data — a won deal must not
+vanish because one of its participants asked to be forgotten. Erasure
+propagates naturally everywhere the contact's name is read (e.g. a deal's
+`ContactNames`) without special-casing, and nulling `Email` means a later
+CSV import can't accidentally re-match and repopulate an erased contact's
+PII. Both actions are owner/admin-only and write to the same `AuditLog` this
+pass's SOC 2 work introduced (`contact.exported`/`contact.erased`). The
+contacts list gained per-row "Export"/"Erase" actions. **Real, deliberate
+scope limit, stated up front rather than discovered later**: this does not
+regenerate or scrub `Deal.AiSummary`, which may have been generated from
+activity text mentioning the erased contact by name — `auth-security-expert`
+itself frames this exact case ("retrofitting deletion across an AI-features
+codebase full of caches, embeddings, and summaries is much harder than
+building it in from the start") as a real follow-up, not covered here. The
+second surfaced gap — every AI feature sending real PII to Anthropic with no
+region control — remains open; it's a vendor-agreement/feature-gating
+question for a live region-sensitive deal, not something to build
+speculatively (see `docs/REGIONAL_COMPLIANCE.md` §4).
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -408,12 +440,12 @@ credentials (the Google flow is fully wired end to end but
 any actual email/calendar send capability, RAG over CRM history, task/deal
 assignment (needed before `task_overdue`/`deal_assigned` notifications can
 exist), contact/company detail pages, deal stage-transition history (needed
-before a conversion/funnel report can exist), data-subject export/delete
-endpoints (see `docs/REGIONAL_COMPLIANCE.md` §4 — `auth-security-expert`'s
-remit), and the rest of Phase 2 (email/calendar sync with consent/
-suppression gating, billing — see `docs/LOCALIZED_BILLING.md` for what that
-future billing build needs to get right on tax from day one). **Phase 4 is
-now complete** — see the two sub-areas above.
+before a conversion/funnel report can exist), AI-feature region controls
+(see `docs/REGIONAL_COMPLIANCE.md` §4), and the rest of Phase 2 (email/
+calendar sync with consent/suppression gating, billing — see
+`docs/LOCALIZED_BILLING.md` for what that future billing build needs to get
+right on tax from day one). **Phase 4 is complete** — see the sub-areas
+above.
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"

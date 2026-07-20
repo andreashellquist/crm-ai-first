@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CrmApi.Authorization;
 using CrmApi.Data;
 using CrmApi.Dtos;
 using CrmApi.Models;
@@ -12,7 +13,7 @@ namespace CrmApi.Controllers;
 [ApiController]
 [Route("api/contacts")]
 [Authorize]
-public class ContactsController(AppDbContext db, CurrentUser current) : ControllerBase
+public class ContactsController(AppDbContext db, CurrentUser current, AuditLogService audit) : ControllerBase
 {
     // q/lifecycleStage/sort are shareable/bookmarkable via URL search params
     // (frontend-engineer's convention for record-table filters) — the same
@@ -131,5 +132,72 @@ public class ContactsController(AppDbContext db, CurrentUser current) : Controll
             new { csvContent = request.CsvContent, columnMapping = request.ColumnMapping, workspaceId = current.WorkspaceId },
             current.WorkspaceId);
         return Ok(new CsvImportResponse(jobId));
+    }
+
+    // Data-subject access request fulfillment (GDPR/CCPA "what do you have
+    // on me") — see auth-security-expert's "Data-subject requests" section
+    // and docs/REGIONAL_COMPLIANCE.md §4, which flagged this as a real gap:
+    // schema-only DeletedAt columns existed with no way to act on them.
+    // Owner/admin only, same sensitivity tier as SSO/workspace-settings
+    // config — this fulfills a real external request, not routine CRUD.
+    [HttpGet("{id}/export")]
+    [RequireRole("owner", "admin")]
+    public async Task<ActionResult<ContactExportDto>> Export(string id)
+    {
+        var contact = await db.Contacts
+            .Include(c => c.Company)
+            .Include(c => c.Activities.OrderByDescending(a => a.CreatedAt))
+            .Include(c => c.Deals).ThenInclude(d => d.Company)
+            .FirstOrDefaultAsync(c => c.Id == id && c.WorkspaceId == current.WorkspaceId);
+        if (contact is null) return NotFound();
+
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.ContactExported, "Contact", contact.Id);
+        await db.SaveChangesAsync();
+
+        return Ok(new ContactExportDto(
+            contact.Id,
+            contact.FirstName,
+            contact.LastName,
+            contact.Email,
+            contact.Phone,
+            contact.LifecycleStage,
+            contact.Company?.Name,
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(contact.CustomFields) ?? [],
+            contact.Activities.Select(a => new ContactExportActivityDto(a.Id, a.Type, a.Body, a.CreatedAt)).ToList(),
+            contact.Deals.Select(d => new ContactExportDealDto(d.Id, d.Company?.Name, d.AmountCents, d.Currency, d.CreatedAt)).ToList(),
+            DateTime.UtcNow
+        ));
+    }
+
+    // Erasure — anonymizes this contact's own PII fields in place rather
+    // than hard-deleting the row: Deals/Activities that reference this
+    // contact are this workspace's own business records, not the data
+    // subject's personal data, and must survive the request intact (a won
+    // deal shouldn't vanish because a participant asked to be forgotten).
+    // Real, deliberate scope limit (matches auth-security-expert's own
+    // framing: "retrofitting deletion across an AI-features codebase full
+    // of caches, embeddings, and summaries is much harder than building it
+    // in from the start"): this does NOT re-run or scrub Deal.AiSummary,
+    // which may have been generated from Activity text mentioning this
+    // contact by name — regenerating cached AI summaries on erasure is a
+    // real follow-up, not covered by this pass.
+    [HttpDelete("{id}")]
+    [RequireRole("owner", "admin")]
+    public async Task<IActionResult> Erase(string id)
+    {
+        var contact = await db.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.WorkspaceId == current.WorkspaceId);
+        if (contact is null) return NotFound();
+
+        contact.FirstName = "[deleted contact]";
+        contact.LastName = null;
+        contact.Email = null;
+        contact.Phone = null;
+        contact.CustomFields = "{}"; // may hold PII in workspace-defined fields we can't selectively distinguish
+        contact.DeletedAt ??= DateTime.UtcNow;
+        contact.UpdatedAt = DateTime.UtcNow;
+
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.ContactErased, "Contact", contact.Id);
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 }

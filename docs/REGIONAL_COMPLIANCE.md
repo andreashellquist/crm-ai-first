@@ -253,24 +253,20 @@ coverage. Findings:
 
 ### Real gaps (concrete, not speculative)
 
-- **No data-subject export or deletion endpoint exists at all.**
-  `ContactsController` has `List`, `Create`, and CSV-import endpoints — no
-  `DELETE` action anywhere in the file, and no export-a-single-contact's-
-  data endpoint anywhere in the codebase (`ReportsController.Export` exports
-  aggregate report data, not an individual's PII). `Contact.DeletedAt`,
-  `Company.DeletedAt`, and `Deal.DeletedAt` are consequently **dead columns
-  today** — schema exists, nothing reads or writes them outside of
-  `ContactsController.List`'s filter — the same "field exists in the schema,
-  nothing populates it yet" pattern `CLAUDE.md` already documents for
-  `Workspace.DefaultCurrency`/`WorkspaceMember.Timezone` before the Phase 4
-  i18n work closed that gap. This is squarely `auth-security-expert`'s
-  "mechanics of data-subject requests" remit (see that agent's "Data-subject
-  requests" section: "design contact/company deletion as a real cascade...
-  from day one... GDPR/CCPA-style 'delete my data' requests are a
-  when-not-if") — flagging it here because a workspace in any of the regimes
-  in §2 (all of which include an access/erasure right in some form) will
-  eventually ask for this, and today there is no way to fulfill that request
-  except a direct database operation.
+- ~~No data-subject export or deletion endpoint exists at all.~~ **Closed**:
+  `ContactsController.Export`/`Erase` (`GET`/`DELETE /api/contacts/{id}` +
+  `/export`) now fulfill access and erasure requests — export returns a
+  contact's PII plus associated activities/deals as a downloadable JSON
+  file; erasure anonymizes the contact's own PII fields in place (name,
+  email, phone, custom fields) rather than hard-deleting the row, since
+  associated Deals/Activities are this workspace's business records, not
+  the data subject's personal data. `Contact.DeletedAt` is no longer a dead
+  column. See `CLAUDE.md`'s post-Phase-4 section for the full writeup.
+  **Still not covered**: `Company.DeletedAt`/`Deal.DeletedAt` remain
+  unwired (companies/deals aren't themselves data subjects under GDPR — only
+  natural persons are — so this was a deliberate v1 scope line, not an
+  oversight), and erasure does not regenerate/scrub `Deal.AiSummary`, which
+  may reference an erased contact by name in cached AI-generated text.
 - **No `Workspace`-level region/jurisdiction field at all** — confirmed by
   reading `Models/Workspace.cs` in full: `Id`, `Name`, `DefaultCurrency`,
   timestamps, and navigation properties, nothing else. Not a gap to close
@@ -319,10 +315,13 @@ coverage. Findings:
 
 ## What this document deliberately does not do
 
-- It does not add a `Workspace.DataRegion` column, a data-export endpoint, or
-  any other code — those are `database-schema-expert`/`auth-security-expert`/
-  `backend-api-engineer` implementation work, triggered by the gaps and
-  guardrails named in §3 and §4.
+- This document itself did not add a `Workspace.DataRegion` column or any
+  code — it identifies requirements and guardrails, per this agent's
+  charter. The data-export/erasure gap named in §4 has since been closed
+  (see `ContactsController.Export`/`Erase`, and `CLAUDE.md`'s post-Phase-4
+  section) as separate `auth-security-expert`/`backend-api-engineer`
+  implementation work triggered by this document's own finding —
+  `Workspace.DataRegion` remains unbuilt, correctly deferred per §3.
 - It does not assert compliance status for any market — per the
   `regional-compliance-expert` agent's hard boundary, this is a
   structural-divergence characterization, not a legal conclusion.

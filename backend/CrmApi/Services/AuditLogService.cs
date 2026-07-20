@@ -24,6 +24,8 @@ public class AuditLogService(AppDbContext db)
         public const string SsoConnectionUpdated = "sso_connection.updated";
         public const string SsoConnectionRemoved = "sso_connection.removed";
         public const string WorkspaceSettingsUpdated = "workspace_settings.updated";
+        public const string ContactExported = "contact.exported";
+        public const string ContactErased = "contact.erased";
     }
 
     // metadata is a plain object (anonymous type at call sites) serialized

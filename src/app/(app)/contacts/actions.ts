@@ -61,3 +61,16 @@ export async function deleteSavedViewAction(id: string): Promise<void> {
   await api.DELETE("/api/saved-views/{id}", { params: { path: { id } } });
   revalidatePath("/contacts");
 }
+
+// Data-subject erasure request — see ContactsController.Erase /
+// auth-security-expert's "Data-subject requests" section. Returns an error
+// string rather than throwing so the row can show it inline instead of a
+// Next.js error boundary swallowing the reason (most likely: not an
+// owner/admin).
+export async function eraseContactAction(id: string): Promise<string | undefined> {
+  const { api } = await requireWorkspace();
+  const { error } = await api.DELETE("/api/contacts/{id}", { params: { path: { id } } });
+  if (error) return "Could not erase this contact — you may need to be an owner or admin.";
+  revalidatePath("/contacts");
+  return undefined;
+}

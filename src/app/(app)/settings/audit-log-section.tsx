@@ -13,6 +13,8 @@ const ACTION_LABELS: Record<string, string> = {
   "sso_connection.updated": "Updated the SSO connection",
   "sso_connection.removed": "Removed the SSO connection",
   "workspace_settings.updated": "Updated workspace settings",
+  "contact.exported": "Exported a contact's data",
+  "contact.erased": "Erased a contact's data",
 };
 
 // Read-only — see AuditLogController/AuditLogService. Fetched with

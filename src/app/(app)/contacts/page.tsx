@@ -4,6 +4,7 @@ import { NewContactForm } from "./new-contact-form";
 import { ContactFilters } from "./contact-filters";
 import { SavedViewsBar } from "./saved-views-bar";
 import { listSavedViewsAction } from "./actions";
+import { ContactRowActions } from "./contact-row-actions";
 
 export default async function ContactsPage({
   searchParams,
@@ -45,22 +46,27 @@ export default async function ContactsPage({
               <th className="px-4 py-2 font-medium">Email</th>
               <th className="px-4 py-2 font-medium">Company</th>
               <th className="px-4 py-2 font-medium">Lifecycle stage</th>
+              <th className="px-4 py-2 font-medium text-right">Data requests</th>
             </tr>
           </thead>
           <tbody>
-            {contacts.map((contact) => (
-              <tr key={contact.id} className="border-t border-neutral-100">
-                <td className="px-4 py-2">
-                  {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—"}
-                </td>
-                <td className="px-4 py-2 text-neutral-600">{contact.email ?? "—"}</td>
-                <td className="px-4 py-2 text-neutral-600">{contact.companyName ?? "—"}</td>
-                <td className="px-4 py-2 text-neutral-600">{contact.lifecycleStage}</td>
-              </tr>
-            ))}
+            {contacts.map((contact) => {
+              const name = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—";
+              return (
+                <tr key={contact.id} className="border-t border-neutral-100">
+                  <td className="px-4 py-2">{name}</td>
+                  <td className="px-4 py-2 text-neutral-600">{contact.email ?? "—"}</td>
+                  <td className="px-4 py-2 text-neutral-600">{contact.companyName ?? "—"}</td>
+                  <td className="px-4 py-2 text-neutral-600">{contact.lifecycleStage}</td>
+                  <td className="px-4 py-2">
+                    <ContactRowActions contactId={contact.id} label={name} />
+                  </td>
+                </tr>
+              );
+            })}
             {contacts.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={5} className="px-4 py-6 text-center text-neutral-500">
                   No contacts match — try adjusting the filters above.
                 </td>
               </tr>

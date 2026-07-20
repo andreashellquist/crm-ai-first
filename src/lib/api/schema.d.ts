@@ -598,6 +598,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contacts/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ContactExportDto"];
+                        "application/json": components["schemas"]["ContactExportDto"];
+                        "text/json": components["schemas"]["ContactExportDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/field-definitions": {
         parameters: {
             query?: never;
@@ -2948,6 +3022,36 @@ export interface components {
             companyName: null | string;
             lifecycleStage: string;
             customFields: Record<string, never>;
+        };
+        ContactExportActivityDto: {
+            id: string;
+            type: string;
+            body: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ContactExportDealDto: {
+            id: string;
+            companyName: null | string;
+            /** Format: int32 */
+            amountCents: null | number | string;
+            currency: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ContactExportDto: {
+            contactId: string;
+            firstName: null | string;
+            lastName: null | string;
+            email: null | string;
+            phone: null | string;
+            lifecycleStage: string;
+            companyName: null | string;
+            customFields: Record<string, never>;
+            activities: components["schemas"]["ContactExportActivityDto"][];
+            deals: components["schemas"]["ContactExportDealDto"][];
+            /** Format: date-time */
+            exportedAt: string;
         };
         CreateApiKeyRequest: {
             name: string;
