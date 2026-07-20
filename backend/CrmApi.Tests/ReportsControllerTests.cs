@@ -16,6 +16,43 @@ public class ReportsControllerTests(CrmApiFactory factory) : IntegrationTestBase
         Assert.NotNull(report);
         Assert.Equal(2, report!.Pipeline.Count); // StageOne + StageTwo, both zeroed
         Assert.All(report.Pipeline, r => Assert.Equal(0, r.DealCount));
+        Assert.Equal("USD", report.DefaultCurrency);
+        Assert.Null(report.RefreshedAtDisplay); // never refreshed yet
+    }
+
+    [Fact]
+    public async Task Get_ReflectsWorkspacesDefaultCurrency()
+    {
+        var ws = await SeedWorkspaceAsync();
+        await WithDb(async db =>
+        {
+            var workspace = await db.Workspaces.FindAsync(ws.Workspace.Id);
+            workspace!.DefaultCurrency = "GBP";
+            await db.SaveChangesAsync();
+        });
+
+        var report = await ws.Client.GetFromJsonAsync<ReportsResponse>("/api/reports");
+
+        Assert.Equal("GBP", report!.DefaultCurrency);
+    }
+
+    [Fact]
+    public async Task Get_AfterRefresh_FormatsRefreshedAtInCallersTimezone()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var putResponse = await ws.Client.PutAsJsonAsync("/api/me", new UpdateMeRequest(null, "America/New_York"));
+        putResponse.EnsureSuccessStatusCode();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne, amountCents: 100_00);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var moveResponse = await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/move", new MoveDealRequest(ws.StageTwo.Id));
+        moveResponse.EnsureSuccessStatusCode();
+        await ProcessAllPendingJobsAsync();
+
+        var report = await ws.Client.GetFromJsonAsync<ReportsResponse>("/api/reports");
+
+        Assert.NotNull(report!.RefreshedAtDisplay);
+        Assert.Contains("America/New_York", report.RefreshedAtDisplay);
     }
 
     [Fact]

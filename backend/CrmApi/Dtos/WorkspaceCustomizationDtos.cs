@@ -2,9 +2,9 @@ using System.Text.Json;
 
 namespace CrmApi.Dtos;
 
-public record WorkspaceSettingsDto(Dictionary<string, JsonElement> Terminology, List<string> EnabledModules);
+public record WorkspaceSettingsDto(Dictionary<string, JsonElement> Terminology, List<string> EnabledModules, string DefaultCurrency);
 
-public record UpdateWorkspaceSettingsRequest(Dictionary<string, JsonElement>? Terminology, List<string>? EnabledModules);
+public record UpdateWorkspaceSettingsRequest(Dictionary<string, JsonElement>? Terminology, List<string>? EnabledModules, string? DefaultCurrency = null);
 
 public record FieldDefinitionDto(
     string Id,

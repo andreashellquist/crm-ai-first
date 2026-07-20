@@ -3,11 +3,15 @@
 // range) — coerce once here rather than at every call site.
 type NullableAmount = number | string | null | undefined;
 
-export function formatAmount(cents: NullableAmount, currency: string | null | undefined) {
+// fallbackCurrency is required, not a hardcoded internal default — callers
+// pass the workspace's own DefaultCurrency (never a bare "USD" literal), so
+// a non-USD workspace's amounts never silently render with the wrong
+// currency symbol (i18n-currency-timezone skill: "never assume USD").
+export function formatAmount(cents: NullableAmount, currency: string | null | undefined, fallbackCurrency: string) {
   if (cents == null) return null;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency ?? "USD",
+    currency: currency ?? fallbackCurrency,
     maximumFractionDigits: 0,
   }).format(Number(cents) / 100);
 }

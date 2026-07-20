@@ -28,6 +28,11 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             .FirstOrDefaultAsync();
         if (pipeline is null) return NotFound();
 
+        var defaultCurrency = await db.Workspaces
+            .Where(w => w.Id == current.WorkspaceId)
+            .Select(w => w.DefaultCurrency)
+            .FirstAsync();
+
         var dto = new PipelineBoardDto(
             pipeline.Id,
             pipeline.Name,
@@ -42,7 +47,8 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
                     d.AiScore,
                     d.AiScoreRationale
                 )).ToList()
-            )).ToList()
+            )).ToList(),
+            defaultCurrency
         );
         return Ok(dto);
     }

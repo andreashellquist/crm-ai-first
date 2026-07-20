@@ -95,7 +95,7 @@ export function PipelineBoard({ pipeline }: { pipeline: PipelineBoard }) {
                 <h2 className="text-sm font-semibold">{stage.name}</h2>
                 <span className="text-xs text-neutral-500">{stage.deals.length}</span>
               </div>
-              <div className="mb-3 text-xs text-neutral-500">{formatAmount(stageValueCents, "USD")}</div>
+              <div className="mb-3 text-xs text-neutral-500">{formatAmount(stageValueCents, pipeline.defaultCurrency, pipeline.defaultCurrency)}</div>
               <div className="space-y-2">
                 {stage.deals.map((deal) => (
                   <div
@@ -115,7 +115,7 @@ export function PipelineBoard({ pipeline }: { pipeline: PipelineBoard }) {
                     <DealCard
                       dealId={deal.id}
                       title={deal.title}
-                      amountLabel={formatAmount(deal.amountCents, deal.currency)}
+                      amountLabel={formatAmount(deal.amountCents, deal.currency, pipeline.defaultCurrency)}
                       stages={allStages}
                       currentStageId={stage.id}
                       aiScore={deal.aiScore == null ? null : Number(deal.aiScore)}

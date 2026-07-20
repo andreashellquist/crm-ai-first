@@ -262,6 +262,36 @@ migrating them is a mechanical follow-up, not a design gap. SSO (SAML/OIDC)
 — the last piece of Phase 4's "Enterprise" half — remains unbuilt: it hits
 the same missing-real-IdP-credentials wall as Google OAuth.
 
+Phase 4's fourth sub-area, locale-aware currency/timezone formatting, is also
+in, per the `i18n-currency-timezone` skill. `Workspace.DefaultCurrency` and
+`WorkspaceMember.Timezone` both pre-existed in the schema since early
+phases but were dead columns nothing ever read or wrote — this closed that
+gap rather than adding new schema. `WorkspaceSettingsController`'s
+`PUT /api/workspace/settings` now accepts and ISO-4217-validates
+`defaultCurrency`; every DTO that carries a deal amount
+(`PipelineBoardDto`, `ReportsResponse`) carries the workspace's
+`DefaultCurrency` alongside it, and `src/lib/money.ts`'s `formatAmount` was
+changed to require an explicit `fallbackCurrency` argument rather than
+hardcoding `"USD"` internally — a real, live bug this closed: the pipeline
+board's stage totals and every currency figure on `/reports` were
+hardcoding `"USD"` regardless of a workspace's actual configured currency. A
+new `MeController` (`GET`/`PUT /api/me`) is a workspace member's
+self-service profile (name + IANA timezone, validated via
+`TimeZoneInfo.FindSystemTimeZoneById`); `ReportsController.Get()`'s
+`FormatInCallerTimezoneAsync` is the reference implementation of converting
+a UTC-stored timestamp to the caller's own timezone *on the backend* and
+shipping a pre-formatted string (`ReportsResponse.RefreshedAtDisplay`)
+rather than a raw timestamp for the frontend to call
+`.toLocaleString()` on (which silently uses the browser's timezone, not the
+member's configured one). `/settings` gained "My profile" and "Default
+currency" sections. **Deliberately not done**: the small number of
+pre-existing `new Date(...).toLocaleString()` call sites elsewhere in the
+frontend (activity timestamps, webhook delivery times) were not migrated to
+the backend-formatted-string pattern in this pass — a mechanical follow-up,
+not a design gap — and there's no per-user locale field yet (only
+`Timezone`), so number/date *layout* (not just currency/timezone
+*correctness*) still hardcodes `en-US`-shaped formatting.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -276,7 +306,8 @@ custom roles are built, see above), task/deal assignment (needed before `task_ov
 stage-transition history (needed before a conversion/funnel report can
 exist), the rest of Phase 2 (email/calendar sync with consent/suppression
 gating, billing), and the rest of Phase 4 (regional compliance/localized
-billing, locale-aware formatting, SOC 2 readiness).
+billing, SOC 2 readiness — locale-aware currency/timezone formatting is now
+built, see above).
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"
@@ -284,9 +315,9 @@ below) after Phase 1 had already started. `CLAUDE.md`, `crm-data-model`,
 `backend-api-engineer`, `database-schema-expert`, `auth-security-expert`,
 `devops-observability-expert`, `qa-test-engineer`, `ai-features-architect`,
 `workspace-customization`, `csv-import-dedupe`, `notifications-and-digests`,
-`reporting-read-models`, and `public-api-and-webhooks` have been updated for
-the new stack. Skills further from the migration's blast radius
-(`pipeline-kanban-board`, `i18n-currency-timezone`,
+`reporting-read-models`, `public-api-and-webhooks`, and
+`i18n-currency-timezone` have been updated for the new stack. Skills further
+from the migration's blast radius (`pipeline-kanban-board`,
 `communication-consent-and-suppression`) still show
 Prisma/TypeScript-flavored schema snippets and code examples — the *patterns
 and conventions* in them (multi-tenancy, soft deletes, tool-calling

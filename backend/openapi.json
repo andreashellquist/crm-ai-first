@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5194/"
+      "url": "http://localhost:5080/"
     }
   ],
   "paths": {
@@ -955,6 +955,82 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Me"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
                 }
               }
             }
@@ -3881,6 +3957,36 @@
           }
         }
       },
+      "MeDto": {
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "role",
+          "timezone"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
       "MemberDto": {
         "required": [
           "id",
@@ -3988,7 +4094,8 @@
         "required": [
           "id",
           "name",
-          "stages"
+          "stages",
+          "defaultCurrency"
         ],
         "type": "object",
         "properties": {
@@ -4003,6 +4110,9 @@
             "items": {
               "$ref": "#/components/schemas/StageDto"
             }
+          },
+          "defaultCurrency": {
+            "type": "string"
           }
         }
       },
@@ -4277,10 +4387,12 @@
         "required": [
           "dealTerm",
           "dealTermPlural",
+          "defaultCurrency",
           "pipeline",
           "forecast",
           "activity",
-          "refreshedAt"
+          "refreshedAt",
+          "refreshedAtDisplay"
         ],
         "type": "object",
         "properties": {
@@ -4288,6 +4400,9 @@
             "type": "string"
           },
           "dealTermPlural": {
+            "type": "string"
+          },
+          "defaultCurrency": {
             "type": "string"
           },
           "pipeline": {
@@ -4314,6 +4429,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "refreshedAtDisplay": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4766,6 +4887,24 @@
           }
         }
       },
+      "UpdateMeRequest": {
+        "required": [
+          "name",
+          "timezone"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
       "UpdateRoleRequest": {
         "required": [
           "permissions"
@@ -4842,6 +4981,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "defaultCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -5001,7 +5146,8 @@
       "WorkspaceSettingsDto": {
         "required": [
           "terminology",
-          "enabledModules"
+          "enabledModules",
+          "defaultCurrency"
         ],
         "type": "object",
         "properties": {
@@ -5013,6 +5159,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "defaultCurrency": {
+            "type": "string"
           }
         }
       }
@@ -5042,6 +5191,9 @@
     },
     {
       "name": "Listings"
+    },
+    {
+      "name": "Me"
     },
     {
       "name": "Members"

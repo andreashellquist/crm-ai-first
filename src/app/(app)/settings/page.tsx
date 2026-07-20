@@ -1,5 +1,7 @@
 import { requireWorkspace } from "@/lib/workspace";
 import { SettingsForm } from "./settings-form";
+import { CurrencyForm } from "./currency-form";
+import { MyProfileForm } from "./my-profile-form";
 import { ApiKeysSection } from "./api-keys-section";
 import { WebhooksSection } from "./webhooks-section";
 import { RolesSection } from "./roles-section";
@@ -16,6 +18,7 @@ export default async function SettingsPage() {
   const { data: webhookSubscriptions } = await api.GET("/api/webhook-subscriptions");
   const { data: roles } = await api.GET("/api/roles");
   const { data: members } = await api.GET("/api/members");
+  const { data: me } = await api.GET("/api/me");
 
   const terminology = settings?.terminology ?? {};
   const overrides = Object.entries(terminology).filter(([, v]) => v && typeof v === "object");
@@ -29,6 +32,22 @@ export default async function SettingsPage() {
           admin turn optional modules on or off afterward.
         </p>
       </div>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">My profile</h2>
+        <p className="text-sm text-neutral-500">
+          Your timezone is used to display times like a report&apos;s last-refreshed timestamp in your own local time.
+        </p>
+        <MyProfileForm name={me?.name ?? null} timezone={me?.timezone ?? "UTC"} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">Default currency</h2>
+        <p className="text-sm text-neutral-500">
+          Used to format deal amounts that don&apos;t specify their own currency, and to label pipeline/report totals.
+        </p>
+        <CurrencyForm defaultCurrency={settings?.defaultCurrency ?? "USD"} />
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium">Terminology</h2>

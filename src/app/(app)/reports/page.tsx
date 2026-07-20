@@ -49,8 +49,8 @@ export default async function ReportsPage() {
         <div>
           <h1 className="text-xl font-semibold">Reports</h1>
           <p className="text-sm text-neutral-500">
-            {report.refreshedAt
-              ? `Last refreshed ${new Date(report.refreshedAt).toLocaleString()}`
+            {report.refreshedAtDisplay
+              ? `Last refreshed ${report.refreshedAtDisplay}`
               : "Not refreshed yet — add or update a deal, or click Refresh."}
           </p>
         </div>
@@ -84,10 +84,10 @@ export default async function ReportsPage() {
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-2">
                       <Bar value={Number(row.dealValueCents)} max={maxPipelineValue} />
-                      <span className="whitespace-nowrap text-xs text-neutral-500">{formatAmount(row.dealValueCents, "USD")}</span>
+                      <span className="whitespace-nowrap text-xs text-neutral-500">{formatAmount(row.dealValueCents, report.defaultCurrency, report.defaultCurrency)}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-neutral-600">{formatAmount(row.weightedValueCents, "USD")}</td>
+                  <td className="px-4 py-2 text-neutral-600">{formatAmount(row.weightedValueCents, report.defaultCurrency, report.defaultCurrency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -123,10 +123,10 @@ export default async function ReportsPage() {
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <Bar value={Number(row.dealValueCents)} max={maxForecastValue} />
-                        <span className="whitespace-nowrap text-xs text-neutral-500">{formatAmount(row.dealValueCents, "USD")}</span>
+                        <span className="whitespace-nowrap text-xs text-neutral-500">{formatAmount(row.dealValueCents, report.defaultCurrency, report.defaultCurrency)}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-neutral-600">{formatAmount(row.weightedValueCents, "USD")}</td>
+                    <td className="px-4 py-2 text-neutral-600">{formatAmount(row.weightedValueCents, report.defaultCurrency, report.defaultCurrency)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -30,6 +30,7 @@ export default async function DealDetailPage({
   // when this workspace has "listings" enabled; absent entirely otherwise,
   // proving core deal-detail flows don't depend on any module.
   const { data: settings } = await api.GET("/api/workspace/settings");
+  const defaultCurrency = settings?.defaultCurrency ?? "USD";
   const listingsEnabled = settings?.enabledModules?.includes("listings") ?? false;
   const listing = listingsEnabled
     ? (await api.GET("/api/deals/{dealId}/listing", { params: { path: { dealId } } })).data
@@ -43,7 +44,7 @@ export default async function DealDetailPage({
         </Link>
         <h1 className="mt-1 text-xl font-semibold">{deal.title}</h1>
         <p className="text-sm text-neutral-500">
-          {deal.stageName} · {formatAmount(deal.amountCents, deal.currency) ?? "No amount set"}
+          {deal.stageName} · {formatAmount(deal.amountCents, deal.currency, defaultCurrency) ?? "No amount set"}
         </p>
       </div>
 

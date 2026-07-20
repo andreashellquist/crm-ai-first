@@ -31,7 +31,16 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
         var dealTerm = TerminologyResolver.Resolve(terminologyJson, "deal", "deal");
         var dealTermPlural = TerminologyResolver.Resolve(terminologyJson, "deal", "deals", plural: true);
 
-        return Ok(new ReportsResponse(dealTerm, dealTermPlural, pipelineRows, forecastRows, activityRows, refreshedAt));
+        var defaultCurrency = await db.Workspaces
+            .Where(w => w.Id == current.WorkspaceId)
+            .Select(w => w.DefaultCurrency)
+            .FirstAsync();
+
+        var refreshedAtDisplay = refreshedAt is { } refreshedAtValue
+            ? await FormatInCallerTimezoneAsync(refreshedAtValue)
+            : null;
+
+        return Ok(new ReportsResponse(dealTerm, dealTermPlural, defaultCurrency, pipelineRows, forecastRows, activityRows, refreshedAt, refreshedAtDisplay));
     }
 
     // Reports refresh on the writes that change what they show
@@ -74,6 +83,32 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
         };
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", $"{type}-report.csv");
+    }
+
+    // Reference implementation of the i18n-currency-timezone pattern: format
+    // a UTC-stored timestamp in the caller's own WorkspaceMember.Timezone
+    // (a column that previously existed but was never read anywhere), not
+    // the server's local time or a bare UTC string.
+    private async Task<string> FormatInCallerTimezoneAsync(DateTime utcValue)
+    {
+        var timezoneId = await db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == current.WorkspaceId && m.UserId == current.UserId)
+            .Select(m => m.Timezone)
+            .FirstOrDefaultAsync() ?? "UTC";
+
+        TimeZoneInfo timezone;
+        try
+        {
+            timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            timezone = TimeZoneInfo.Utc;
+        }
+
+        var utc = DateTime.SpecifyKind(utcValue, DateTimeKind.Utc);
+        var local = TimeZoneInfo.ConvertTimeFromUtc(utc, timezone);
+        return $"{local:MMM d, yyyy h:mm tt} ({timezone.Id})";
     }
 
     private async Task<(List<PipelineReportRow>, List<ForecastReportRow>, List<ActivityReportRow>, DateTime?)> LoadReportData(string pipelineId)

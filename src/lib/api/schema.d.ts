@@ -798,6 +798,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MeDto"];
+                        "application/json": components["schemas"]["MeDto"];
+                        "text/json": components["schemas"]["MeDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMeRequest"];
+                    "text/json": components["schemas"]["UpdateMeRequest"];
+                    "application/*+json": components["schemas"]["UpdateMeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MeDto"];
+                        "application/json": components["schemas"]["MeDto"];
+                        "text/json": components["schemas"]["MeDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members": {
         parameters: {
             query?: never;
@@ -2828,6 +2892,13 @@ export interface components {
             workspaceId: string;
             workspaceName: string;
         };
+        MeDto: {
+            userId: string;
+            name: null | string;
+            email: string;
+            role: string;
+            timezone: string;
+        };
         MemberDto: {
             id: string;
             userId: string;
@@ -2858,6 +2929,7 @@ export interface components {
             id: string;
             name: string;
             stages: components["schemas"]["StageDto"][];
+            defaultCurrency: string;
         };
         PipelineReportRow: {
             stageId: string;
@@ -2927,11 +2999,13 @@ export interface components {
         ReportsResponse: {
             dealTerm: string;
             dealTermPlural: string;
+            defaultCurrency: string;
             pipeline: components["schemas"]["PipelineReportRow"][];
             forecast: components["schemas"]["ForecastReportRow"][];
             activity: components["schemas"]["ActivityReportRow"][];
             /** Format: date-time */
             refreshedAt: null | string;
+            refreshedAtDisplay: null | string;
         };
         RoleDto: {
             id: null | string;
@@ -3028,6 +3102,10 @@ export interface components {
         UpdateMemberRoleRequest: {
             role: string;
         };
+        UpdateMeRequest: {
+            name: null | string;
+            timezone: string;
+        };
         UpdateRoleRequest: {
             permissions: string[];
         };
@@ -3044,6 +3122,7 @@ export interface components {
         UpdateWorkspaceSettingsRequest: {
             terminology: null | Record<string, never>;
             enabledModules: null | string[];
+            defaultCurrency?: null | string;
         };
         UpsertListingRequest: {
             listingAgentName: null | string;
@@ -3085,6 +3164,7 @@ export interface components {
         WorkspaceSettingsDto: {
             terminology: Record<string, never>;
             enabledModules: string[];
+            defaultCurrency: string;
         };
     };
     responses: never;

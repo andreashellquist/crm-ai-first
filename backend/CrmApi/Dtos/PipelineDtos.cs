@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace CrmApi.Dtos;
 
-public record PipelineBoardDto(string Id, string Name, List<StageDto> Stages);
+public record PipelineBoardDto(string Id, string Name, List<StageDto> Stages, string DefaultCurrency);
 
 public record StageDto(string Id, string Name, List<DealCardDto> Deals);
 

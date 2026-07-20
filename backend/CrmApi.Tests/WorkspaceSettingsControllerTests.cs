@@ -18,6 +18,37 @@ public class WorkspaceSettingsControllerTests(CrmApiFactory factory) : Integrati
         Assert.NotNull(settings);
         Assert.Empty(settings!.Terminology);
         Assert.Empty(settings.EnabledModules);
+        Assert.Equal("USD", settings.DefaultCurrency);
+    }
+
+    [Fact]
+    public async Task Update_AsOwner_PersistsDefaultCurrency()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PutAsJsonAsync("/api/workspace/settings",
+            new UpdateWorkspaceSettingsRequest(null, null, "EUR"));
+
+        response.EnsureSuccessStatusCode();
+        var dto = await response.Content.ReadFromJsonAsync<WorkspaceSettingsDto>();
+        Assert.Equal("EUR", dto!.DefaultCurrency);
+
+        var refetched = await ws.Client.GetFromJsonAsync<WorkspaceSettingsDto>("/api/workspace/settings");
+        Assert.Equal("EUR", refetched!.DefaultCurrency);
+    }
+
+    [Theory]
+    [InlineData("eur")]
+    [InlineData("EU")]
+    [InlineData("DOLLARS")]
+    public async Task Update_WithInvalidCurrencyCode_ReturnsBadRequest(string currency)
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PutAsJsonAsync("/api/workspace/settings",
+            new UpdateWorkspaceSettingsRequest(null, null, currency));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

@@ -16,6 +16,33 @@ export async function updateModulesAction(_prevState: string | undefined, formDa
   return undefined;
 }
 
+export async function updateCurrencyAction(_prevState: string | undefined, formData: FormData) {
+  const { api } = await requireWorkspace();
+  const defaultCurrency = String(formData.get("defaultCurrency") ?? "").toUpperCase();
+
+  const { error } = await api.PUT("/api/workspace/settings", {
+    body: { terminology: null, enabledModules: null, defaultCurrency },
+  });
+
+  if (error) return "Enter a 3-letter currency code (e.g. USD) — you also need to be an owner or admin.";
+  revalidatePath("/settings");
+  return undefined;
+}
+
+export async function updateProfileAction(_prevState: string | undefined, formData: FormData) {
+  const { api } = await requireWorkspace();
+  const name = formData.get("name");
+  const timezone = formData.get("timezone");
+
+  const { error } = await api.PUT("/api/me", {
+    body: { name: typeof name === "string" && name.trim() ? name : null, timezone: String(timezone ?? "UTC") },
+  });
+
+  if (error) return "Enter a valid IANA timezone (e.g. America/New_York).";
+  revalidatePath("/settings");
+  return undefined;
+}
+
 export type CreateApiKeyState = { error?: string; rawKey?: string; keyName?: string };
 
 export async function createApiKeyAction(_prevState: CreateApiKeyState, formData: FormData): Promise<CreateApiKeyState> {
