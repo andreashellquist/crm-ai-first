@@ -19,7 +19,7 @@ namespace CrmApi.Controllers;
 [ApiController]
 [Route("api/roles")]
 [Authorize]
-public class RolesController(AppDbContext db, CurrentUser current) : ControllerBase
+public class RolesController(AppDbContext db, CurrentUser current, AuditLogService audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<RoleDto>>> List()
@@ -53,6 +53,8 @@ public class RolesController(AppDbContext db, CurrentUser current) : ControllerB
 
         var role = new Role { WorkspaceId = current.WorkspaceId, Name = request.Name, Permissions = permissions };
         db.Roles.Add(role);
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.RoleCreated, "Role", role.Id,
+            new { name = role.Name, permissions = role.Permissions });
         await db.SaveChangesAsync();
         return Ok(new RoleDto(role.Id, role.Name, role.Permissions, false));
     }
@@ -70,6 +72,8 @@ public class RolesController(AppDbContext db, CurrentUser current) : ControllerB
 
         role.Permissions = permissions;
         role.UpdatedAt = DateTime.UtcNow;
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.RoleUpdated, "Role", role.Id,
+            new { name = role.Name, permissions = role.Permissions });
         await db.SaveChangesAsync();
         return Ok(new RoleDto(role.Id, role.Name, role.Permissions, false));
     }
@@ -84,6 +88,7 @@ public class RolesController(AppDbContext db, CurrentUser current) : ControllerB
         var inUse = await db.WorkspaceMembers.AnyAsync(m => m.WorkspaceId == current.WorkspaceId && m.Role == role.Name);
         if (inUse) return Conflict($"\"{role.Name}\" is still assigned to at least one member — reassign them first");
 
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.RoleDeleted, "Role", role.Id, new { name = role.Name });
         db.Roles.Remove(role);
         await db.SaveChangesAsync();
         return NoContent();

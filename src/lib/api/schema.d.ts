@@ -136,6 +136,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AuditLogDto"][];
+                        "application/json": components["schemas"]["AuditLogDto"][];
+                        "text/json": components["schemas"]["AuditLogDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -2882,6 +2919,18 @@ export interface components {
             lastUsedAt: null | string;
             /** Format: date-time */
             revokedAt: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuditLogDto: {
+            id: string;
+            actorUserId: null | string;
+            actorName: null | string;
+            actorEmail: null | string;
+            action: string;
+            targetType: null | string;
+            targetId: null | string;
+            metadata: string;
             /** Format: date-time */
             createdAt: string;
         };

@@ -16,7 +16,7 @@ namespace CrmApi.Controllers;
 [ApiController]
 [Route("api/api-keys")]
 [Authorize]
-public class ApiKeysController(AppDbContext db, CurrentUser current) : ControllerBase
+public class ApiKeysController(AppDbContext db, CurrentUser current, AuditLogService audit) : ControllerBase
 {
     public static readonly string[] ValidScopes =
     [
@@ -59,6 +59,8 @@ public class ApiKeysController(AppDbContext db, CurrentUser current) : Controlle
             CreatedByUserId = current.UserId,
         };
         db.ApiKeys.Add(apiKey);
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.ApiKeyCreated, "ApiKey", apiKey.Id,
+            new { name = apiKey.Name, scopes = apiKey.Scopes });
         await db.SaveChangesAsync();
 
         return Ok(new CreateApiKeyResponse(ToDto(apiKey), rawKey));
@@ -72,6 +74,7 @@ public class ApiKeysController(AppDbContext db, CurrentUser current) : Controlle
         if (apiKey is null) return NotFound();
 
         apiKey.RevokedAt ??= DateTime.UtcNow;
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.ApiKeyRevoked, "ApiKey", apiKey.Id, new { name = apiKey.Name });
         await db.SaveChangesAsync();
         return NoContent();
     }

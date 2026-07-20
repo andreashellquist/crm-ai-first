@@ -14,7 +14,7 @@ namespace CrmApi.Controllers;
 [ApiController]
 [Route("api/workspace/settings")]
 [Authorize]
-public class WorkspaceSettingsController(AppDbContext db, CurrentUser current) : ControllerBase
+public class WorkspaceSettingsController(AppDbContext db, CurrentUser current, AuditLogService audit) : ControllerBase
 {
     // Sanity check, not a full ISO 4217 lookup table — catches obviously
     // wrong input without maintaining an exhaustive currency-code list here.
@@ -54,6 +54,8 @@ public class WorkspaceSettingsController(AppDbContext db, CurrentUser current) :
         if (request.DefaultCurrency is not null)
             workspace.DefaultCurrency = request.DefaultCurrency;
 
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.WorkspaceSettingsUpdated, "Workspace", current.WorkspaceId,
+            new { enabledModules = settings.EnabledModules, defaultCurrency = workspace.DefaultCurrency });
         await db.SaveChangesAsync();
         return Ok(ToDto(settings, workspace));
     }

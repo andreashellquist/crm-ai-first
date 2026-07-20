@@ -328,6 +328,76 @@ this app); and there's no e2e test exercising the actual IdP redirect for
 the same reason there isn't one for Google — no real IdP is reachable from
 this sandbox.
 
+Phase 4's sixth sub-area, a SOC 2 readiness pass (`docs/SOC2_READINESS.md`),
+is also in — a gap analysis against SOC 2's Trust Service Criteria (Security/
+Availability/Confidentiality), not a certification and not legal/audit
+advice. It surfaced and closed one real, concrete gap:
+`docs/PRODUCT_SCOPE.md` §4 had long claimed "audit logging is in the schema
+from Phase 0," but no such table existed anywhere in the codebase — a real
+example of a docs/reality drift this pass caught rather than perpetuated.
+`Models/AuditLog.cs` + `Services/AuditLogService.cs` (a small fixed action
+catalog, same "fixed catalog, not everything" discipline as
+`WebhookSubscription.EventTypes`) now records who changed what
+security-relevant configuration and when — member role changes/removal,
+role create/update/delete, API key create/revoke, SSO connection changes,
+workspace settings updates — written synchronously in the same request/
+transaction as the change itself (never queued, so a job-queue outage can't
+silently drop trail entries), viewable read-only at `GET /api/audit-log`
+(owner/admin only, capped at 100 most recent — same v1 pagination choice as
+the public API) and a new "Audit log" section on `/settings`. Removing the
+acting user's `User` row sets `AuditLog.ActorUserId` to null rather than
+cascading the entry away (`DeleteBehavior.SetNull` in `AppDbContext.cs`) —
+an audit trail that can be deleted by deleting its actor isn't one. The
+readiness doc itself catalogs what else is real (multi-tenant isolation and
+RBAC — the hardest-to-retrofit pieces — have been correct since Phase 0) vs.
+what's a genuine, still-open gap: no dependency/vulnerability scanning in CI,
+no session/JWT revocation mechanism, `SsoConnection.ClientSecret`/
+`WebhookSubscription.Secret` still stored in plaintext, and — its main
+conclusion — that most of what's left is organizational/process work
+(incident-response runbook, vendor/subprocessor management, a periodic
+access-review cadence) that cannot be shipped in a pull request, not an
+engineering backlog.
+
+Phase 4's seventh sub-area, regional privacy law/data residency and
+localized billing/tax, closes out Phase 4 with two analysis documents —
+`docs/REGIONAL_COMPLIANCE.md` and `docs/LOCALIZED_BILLING.md` — rather than
+code, per the `regional-compliance-expert` agent's charter ("identifies
+requirements and where engineering guardrails must sit — it does not
+implement them, and its output is not legal advice"). The residency doc
+separates three requirements often conflated in a sales conversation (legal
+data-localization, contractual/procurement residency, and jurisdiction-of-
+access sovereignty concerns), characterizes divergence from the GDPR/CCPA
+baseline this app already assumes across UK GDPR/PIPEDA/LGPD/Singapore
+PDPA/Australia Privacy Act/PIPL (PIPL is the one regime here with a real
+hard divergence — mandatory in-country data localization), and names the
+cheap-now guardrail (an eventual `Workspace.DataRegion` column, added
+opportunistically rather than on its own migration) vs. what's genuinely
+deferred (actual multi-region infrastructure). It also surfaced two real
+gaps worth tracking even though fixing them is out of this document's own
+scope: **no data-subject export or deletion endpoint exists anywhere** —
+`Contact.DeletedAt`/`Company.DeletedAt`/`Deal.DeletedAt` are dead columns,
+schema-only since nothing writes them outside `ContactsController.List`'s
+read filter, the same "field exists, nothing populates it" pattern already
+seen with `Workspace.DefaultCurrency` pre-i18n-work — and **every AI feature
+sends real contact/deal/activity PII to Anthropic with no region control**
+(`Services/AnthropicMessagesClient.cs` takes only an API key, no
+region/endpoint config), which is the concrete mechanism by which workspace
+PII crosses borders independent of where Postgres itself lives. The billing
+doc is explicit that it's "doubly blocked" — Phase 2's billing system
+(Stripe subscriptions) has never been built at all, so VAT/GST display and
+e-invoicing (Italy's SDI, the EU's evolving ViDA rules, Mexico's CFDI,
+India's GST e-invoicing) are requirements captured now for whoever builds
+Phase 2 billing later, not a spec to implement today; it does name which
+fields are cheap to add to that future billing model on day one
+(`BillingCountry`, `VatNumber`/`TaxId` plus a separate validated flag,
+`BillingLegalName`/`BillingAddress`, `TaxExempt`) vs. genuinely deferred
+(actual VAT-rate calculation, VIES verification, per-country e-invoicing
+integrations — all jobs for a tax/invoicing platform to own, not to
+hand-roll). **This completes Phase 4** — every row in `docs/PRODUCT_SCOPE.md`
+§3's Phase 4 group now has either working code or, where the item is
+explicitly non-code (legal/tax characterization), a grounded analysis
+document.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -338,10 +408,12 @@ credentials (the Google flow is fully wired end to end but
 any actual email/calendar send capability, RAG over CRM history, task/deal
 assignment (needed before `task_overdue`/`deal_assigned` notifications can
 exist), contact/company detail pages, deal stage-transition history (needed
-before a conversion/funnel report can exist), the rest of Phase 2 (email/
-calendar sync with consent/suppression gating, billing), and the rest of
-Phase 4 (regional compliance/localized billing, SOC 2 readiness — Phase 4's
-"Enterprise" half, SSO included, is now fully built, see above).
+before a conversion/funnel report can exist), data-subject export/delete
+endpoints (see `docs/REGIONAL_COMPLIANCE.md` §4 — `auth-security-expert`'s
+remit), and the rest of Phase 2 (email/calendar sync with consent/
+suppression gating, billing — see `docs/LOCALIZED_BILLING.md` for what that
+future billing build needs to get right on tax from day one). **Phase 4 is
+now complete** — see the two sub-areas above.
 
 **Docs-consistency note**: this project moved from an all-TypeScript (Next.js +
 Prisma) stack to a split Next.js frontend / .NET backend (see "Why the split"

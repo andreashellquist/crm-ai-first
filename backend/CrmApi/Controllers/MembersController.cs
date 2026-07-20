@@ -17,7 +17,7 @@ namespace CrmApi.Controllers;
 [ApiController]
 [Route("api/members")]
 [Authorize]
-public class MembersController(AppDbContext db, CurrentUser current) : ControllerBase
+public class MembersController(AppDbContext db, CurrentUser current, AuditLogService audit) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<MemberDto>>> List()
@@ -48,8 +48,11 @@ public class MembersController(AppDbContext db, CurrentUser current) : Controlle
         if (member.Role == "owner" && request.Role != "owner" && await IsOnlyOwnerAsync())
             return Conflict("Can't change the workspace's only owner — promote another member to owner first");
 
+        var previousRole = member.Role;
         member.Role = request.Role;
         member.UpdatedAt = DateTime.UtcNow;
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.MemberRoleChanged, "WorkspaceMember", member.Id,
+            new { previousRole, newRole = member.Role, targetUserId = member.UserId });
         await db.SaveChangesAsync();
         return Ok(new MemberDto(member.Id, member.UserId, member.User!.Name, member.User.Email, member.Role, member.IsActive, member.CreatedAt));
     }
@@ -64,6 +67,8 @@ public class MembersController(AppDbContext db, CurrentUser current) : Controlle
         if (member.Role == "owner" && await IsOnlyOwnerAsync())
             return Conflict("Can't remove the workspace's only owner — promote another member to owner first");
 
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.MemberRemoved, "WorkspaceMember", member.Id,
+            new { targetUserId = member.UserId, role = member.Role });
         db.WorkspaceMembers.Remove(member);
         await db.SaveChangesAsync();
         return NoContent();

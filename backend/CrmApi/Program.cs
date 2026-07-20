@@ -101,6 +101,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReportingService>();
 builder.Services.AddScoped<WorkspaceProvisioningService>();
 builder.Services.AddScoped<WebhookDeliveryService>();
+builder.Services.AddScoped<AuditLogService>();
 // A dead/slow customer endpoint must never tie up a job-worker slot
 // indefinitely — see the public-api-and-webhooks skill.
 builder.Services.AddHttpClient("webhooks", c => c.Timeout = TimeSpan.FromSeconds(10));

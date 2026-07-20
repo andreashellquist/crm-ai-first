@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<SsoConnection> SsoConnections => Set<SsoConnection>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,6 +258,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(s => s.EmailDomain).IsUnique();
             e.HasOne(s => s.Workspace).WithMany()
                 .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuditLog>(e =>
+        {
+            // Newest-first per-workspace listing is the only query shape
+            // AuditLogController needs.
+            e.HasIndex(a => new { a.WorkspaceId, a.CreatedAt });
+            e.HasOne(a => a.Workspace).WithMany()
+                .HasForeignKey(a => a.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            // SetNull, not Cascade: removing the user who made a change must
+            // never delete the record that they made it — the whole point
+            // of an audit trail is that it outlives the actor.
+            e.HasOne(a => a.ActorUser).WithMany()
+                .HasForeignKey(a => a.ActorUserId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

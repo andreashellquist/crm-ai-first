@@ -17,7 +17,7 @@ namespace CrmApi.Controllers;
 // starting an SSO flow, same reasoning as AuthController.Login/
 // GoogleExchange.
 [ApiController]
-public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current, ILogger<SsoController> logger) : ControllerBase
+public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current, AuditLogService audit, ILogger<SsoController> logger) : ControllerBase
 {
     [HttpGet("api/workspace/sso")]
     [Authorize]
@@ -67,6 +67,8 @@ public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current,
         connection.Enforced = request.Enforced;
         connection.IsActive = request.IsActive;
         connection.UpdatedAt = DateTime.UtcNow;
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.SsoConnectionUpdated, "SsoConnection", connection.Id,
+            new { emailDomain = connection.EmailDomain, enforced = connection.Enforced, isActive = connection.IsActive });
         await db.SaveChangesAsync();
 
         return Ok(ToDto(connection));
@@ -80,6 +82,8 @@ public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current,
         var connection = await db.SsoConnections.FirstOrDefaultAsync(c => c.WorkspaceId == current.WorkspaceId);
         if (connection is null) return NotFound();
 
+        audit.Log(current.WorkspaceId, current.UserId, AuditLogService.Actions.SsoConnectionRemoved, "SsoConnection", connection.Id,
+            new { emailDomain = connection.EmailDomain });
         db.SsoConnections.Remove(connection);
         await db.SaveChangesAsync();
         return NoContent();
