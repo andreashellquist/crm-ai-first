@@ -1271,6 +1271,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateDealRequest"];
+                    "text/json": components["schemas"]["CreateDealRequest"];
+                    "application/*+json": components["schemas"]["CreateDealRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DealDetailDto"];
+                        "application/json": components["schemas"]["DealDetailDto"];
+                        "text/json": components["schemas"]["DealDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{dealId}/move": {
         parameters: {
             query?: never;
@@ -3067,6 +3110,16 @@ export interface components {
             email: null | string;
             companyName: null | string;
             customFields?: null | Record<string, never>;
+        };
+        CreateDealRequest: {
+            companyName: string;
+            stageId: null | string;
+            /** Format: int32 */
+            amountCents: null | number | string;
+            currency: null | string;
+            forecastCategory: string;
+            contactIds: null | string[];
+            customFields: null | Record<string, never>;
         };
         CreateFieldDefinitionRequest: {
             entityType: string;

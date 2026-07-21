@@ -23,9 +23,10 @@ test("signing up with the real-estate template lands in a workspace with relabel
 
   // The real-estate template's stage names should render on the board —
   // confirms the chosen template actually provisioned its pipeline, not just
-  // the default one.
-  await expect(page.getByText("New Listing")).toBeVisible();
-  await expect(page.getByText("Under Contract")).toBeVisible();
+  // the default one. Scoped to headings, not getByText: the stage names also
+  // appear as <option>s in the pipeline board's "New deal" stage picker.
+  await expect(page.getByRole("heading", { name: "New Listing" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Under Contract" })).toBeVisible();
 
   expect(consoleErrors).toEqual([]);
 });

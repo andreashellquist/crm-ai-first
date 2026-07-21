@@ -113,10 +113,11 @@ public class WebhookDelivery
   `WebhookDelivery` row + one `deliver_webhook` job per subscription, never a
   synchronous HTTP call from the request/mutation that triggered the event
   (`backend-api-engineer`'s background-job convention). Called from
-  `PipelineController.MoveDeal` (`deal.stage_changed`, plus `deal.won`/
-  `deal.lost` when the target `Stage.IsWon`/`IsLost`) and
-  `ContactsController.Create` (`contact.created`) — a small, fixed event
-  catalog, not a webhook fired for every internal write.
+  `PipelineController.CreateDeal` (`deal.created`), `PipelineController.MoveDeal`
+  (`deal.stage_changed`, plus `deal.won`/`deal.lost` when the target
+  `Stage.IsWon`/`IsLost`), and `ContactsController.Create` (`contact.created`)
+  — a small, fixed event catalog, not a webhook fired for every internal
+  write.
 - `WebhookSigner.Sign(secret, payload)` HMAC-SHA256s the exact JSON string
   that gets sent, as an `X-Crm-Signature: sha256=<hex>` header (plus
   `X-Crm-Event: <type>`) — a receiver recomputes the same HMAC over the raw

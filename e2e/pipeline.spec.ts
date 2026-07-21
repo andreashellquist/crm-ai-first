@@ -36,6 +36,26 @@ test("moves the seeded deal to a new stage via the stage selector and it persist
   await expect(dealCardAfterReload.getByLabel("Stage")).toHaveValue(targetValue!);
 });
 
+// Previously there was no way anywhere in this app to create a Deal at all
+// — only Seed.cs. The write-path coverage (company find-or-create, stage
+// defaulting, custom field/contact validation) is in
+// PipelineControllerTests.cs; this is a reachability smoke test for the
+// pipeline board's "New deal" form.
+test("creates a new deal from the pipeline board and it lands in the first stage", async ({ page }) => {
+  await login(page);
+  await page.goto("/pipeline");
+
+  const companyName = `E2E Newco ${Date.now()}`;
+  await page.getByLabel("Company").fill(companyName);
+  await page.getByLabel(/Amount/).fill("2500");
+  await Promise.all([
+    page.waitForResponse((res) => res.request().method() === "POST"),
+    page.getByRole("button", { name: "New deal" }).click(),
+  ]);
+
+  await expect(page.locator('[data-testid^="deal-card-"]', { hasText: companyName })).toBeVisible();
+});
+
 test("opens the deal detail page from the board", async ({ page }) => {
   await login(page);
   await page.goto("/pipeline");

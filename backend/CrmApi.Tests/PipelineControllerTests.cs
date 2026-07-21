@@ -32,6 +32,118 @@ public class PipelineControllerTests(CrmApiFactory factory) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task CreateDeal_WithNewCompanyName_UpsertsCompanyAndLandsInFirstStage()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var companyName = $"Initech {Guid.NewGuid():N}";
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest(companyName, null, 1000_00, "USD", "pipeline", null, null));
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.NotNull(detail);
+        Assert.Equal(companyName, detail!.Title);
+        Assert.Equal(ws.StageOne.Name, detail.StageName); // lowest Order, per SeedWorkspaceAsync
+        Assert.Equal(1000_00, detail.AmountCents);
+
+        var companyCount = await WithDb(db => db.Companies.CountAsync(c => c.WorkspaceId == ws.Workspace.Id && c.Name == companyName));
+        Assert.Equal(1, companyCount);
+    }
+
+    [Fact]
+    public async Task CreateDeal_ReusesExistingCompanyWithSameName()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var company = TestData.Company(ws.Workspace, "Reused Co");
+        await WithDb(async db => { db.Companies.Add(company); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest("Reused Co", null, null, null, "pipeline", null, null));
+
+        response.EnsureSuccessStatusCode();
+        var companyCount = await WithDb(db => db.Companies.CountAsync(c => c.WorkspaceId == ws.Workspace.Id && c.Name == "Reused Co"));
+        Assert.Equal(1, companyCount);
+    }
+
+    [Fact]
+    public async Task CreateDeal_WithExplicitStageId_LandsThere()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest($"Co {Guid.NewGuid():N}", ws.StageTwo.Id, null, null, "pipeline", null, null));
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.Equal(ws.StageTwo.Name, detail!.StageName);
+    }
+
+    [Fact]
+    public async Task CreateDeal_WithContactIds_AssociatesThem()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var contact = TestData.Contact(ws.Workspace, "Jane");
+        await WithDb(async db => { db.Contacts.Add(contact); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest($"Co {Guid.NewGuid():N}", null, null, null, "pipeline", [contact.Id], null));
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.Contains("Jane", detail!.ContactNames);
+    }
+
+    [Fact]
+    public async Task CreateDeal_WithUnknownContactId_ReturnsBadRequest()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest($"Co {Guid.NewGuid():N}", null, null, null, "pipeline", [Guid.NewGuid().ToString("N")], null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateDeal_WithoutCompanyName_ReturnsBadRequest()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest("", null, null, null, "pipeline", null, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateDeal_WithInvalidForecastCategory_ReturnsBadRequest()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest($"Co {Guid.NewGuid():N}", null, null, null, "not-a-category", null, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateDeal_AppearsOnThePipelineBoard()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var companyName = $"Co {Guid.NewGuid():N}";
+
+        var createResponse = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest(companyName, null, null, null, "pipeline", null, null));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<DealDetailDto>();
+
+        var board = await ws.Client.GetFromJsonAsync<PipelineBoardDto>("/api/pipeline");
+        var stageOne = board!.Stages.Single(s => s.Id == ws.StageOne.Id);
+        Assert.Contains(stageOne.Deals, d => d.Id == created!.Id && d.Title == companyName);
+    }
+
+    [Fact]
     public async Task MoveDeal_UpdatesStage()
     {
         var ws = await SeedWorkspaceAsync();

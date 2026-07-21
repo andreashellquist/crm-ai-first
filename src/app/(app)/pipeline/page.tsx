@@ -1,5 +1,6 @@
 import { requireWorkspace } from "@/lib/workspace";
 import { PipelineBoard } from "./pipeline-board";
+import { NewDealForm } from "./new-deal-form";
 
 export default async function PipelinePage() {
   const { api } = await requireWorkspace();
@@ -17,6 +18,11 @@ export default async function PipelinePage() {
           {pipeline.stages.reduce((sum, stage) => sum + stage.deals.length, 0)} open deals
         </p>
       </div>
+
+      <NewDealForm
+        stages={pipeline.stages.map((stage) => ({ id: stage.id, name: stage.name }))}
+        defaultCurrency={pipeline.defaultCurrency}
+      />
 
       <PipelineBoard pipeline={pipeline} />
     </div>

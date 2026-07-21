@@ -430,6 +430,28 @@ region control — remains open; it's a vendor-agreement/feature-gating
 question for a live region-sensitive deal, not something to build
 speculatively (see `docs/REGIONAL_COMPLIANCE.md` §4).
 
+A second, unrelated real gap surfaced while building the data-subject work
+above and is now also closed: **there was no way anywhere in this app —
+backend or frontend — to create a Deal.** Only `Data/Seed.cs` ever wrote one;
+`PipelineController` had move/score/summarize/next-best-action/log-activity/
+update endpoints but no `POST`. Concretely, this meant a self-serve-
+provisioned workspace (`WorkspaceProvisioningService`, Phase 3) got a real
+`Pipeline` with real `Stage`s and could never put a single `Deal` on the
+board — the pipeline UI a brand-new signup actually lands on was silently
+unusable. `PipelineController.CreateDeal` (`POST /api/deals`) fixes this:
+find-or-creates the `Company` by name (same pattern as
+`ContactsController.Create`, since a Deal's "title" is its company's name —
+this app has no free-text deal title), defaults to the default pipeline's
+lowest-`Order` stage when none is specified, validates forecast category/
+custom fields/contact ids the same way `UpdateDeal` does, and fires the new
+`deal.created` webhook event (`WebhookSubscriptionsController.ValidEventTypes`)
+alongside the existing `refresh_reports` enqueue. The pipeline board gained
+a "New deal" form (company name, stage picker, amount) above the columns.
+**Also still true, not addressed here**: there is likewise no endpoint to
+associate an existing `Contact` with an existing `Deal` after creation
+(`CreateDeal` accepts contact ids only at creation time) — a real, separate
+follow-up, not a hidden gap.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -439,7 +461,8 @@ credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
 any actual email/calendar send capability, RAG over CRM history, task/deal
 assignment (needed before `task_overdue`/`deal_assigned` notifications can
-exist), contact/company detail pages, deal stage-transition history (needed
+exist), contact/company detail pages, associating an existing contact with
+an existing deal after creation, deal stage-transition history (needed
 before a conversion/funnel report can exist), AI-feature region controls
 (see `docs/REGIONAL_COMPLIANCE.md` §4), and the rest of Phase 2 (email/
 calendar sync with consent/suppression gating, billing — see

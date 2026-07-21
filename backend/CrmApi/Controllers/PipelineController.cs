@@ -53,6 +53,89 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
         return Ok(dto);
     }
 
+    // No other path in this app creates a Deal — Seed.cs is the only other
+    // writer. Without this, a self-serve-provisioned workspace (WorkspaceProvisioningService)
+    // gets a Pipeline with Stages but can never put a single Deal on it.
+    [HttpPost("deals")]
+    public async Task<ActionResult<DealDetailDto>> CreateDeal(
+        CreateDealRequest request, [FromServices] JobQueueService queue, [FromServices] WebhookDeliveryService webhooks)
+    {
+        if (string.IsNullOrWhiteSpace(request.CompanyName)) return BadRequest("Company name is required");
+        if (!ValidForecastCategories.Contains(request.ForecastCategory)) return BadRequest("Invalid forecast category");
+        if (request.AmountCents is < 0) return BadRequest("Amount cannot be negative");
+
+        var pipeline = await db.Pipelines
+            .Include(p => p.Stages.OrderBy(s => s.Order))
+            .Where(p => p.WorkspaceId == current.WorkspaceId && p.IsDefault)
+            .FirstOrDefaultAsync();
+        if (pipeline is null) return NotFound("No pipeline configured for this workspace");
+
+        Stage stage;
+        if (string.IsNullOrWhiteSpace(request.StageId))
+        {
+            stage = pipeline.Stages.OrderBy(s => s.Order).First();
+        }
+        else
+        {
+            var matchedStage = pipeline.Stages.FirstOrDefault(s => s.Id == request.StageId);
+            if (matchedStage is null) return NotFound("Stage not found in this workspace's pipeline");
+            stage = matchedStage;
+        }
+
+        var fieldDefs = await db.FieldDefinitions
+            .Where(f => f.WorkspaceId == current.WorkspaceId && f.EntityType == "deal")
+            .ToListAsync();
+        string customFields;
+        try
+        {
+            customFields = CustomFieldValidator.ValidateAndSerialize(fieldDefs, request.CustomFields);
+        }
+        catch (CustomFieldValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        // Find-or-create by name, same pattern as ContactsController.Create —
+        // a Deal always belongs to a Company (DealCardDto/DealDetailDto's
+        // "Title" is the company's name; this app has no free-text deal title).
+        var company = await db.Companies.FirstOrDefaultAsync(c => c.WorkspaceId == current.WorkspaceId && c.Name == request.CompanyName);
+        if (company is null)
+        {
+            company = new Company { WorkspaceId = current.WorkspaceId, Name = request.CompanyName };
+            db.Companies.Add(company);
+        }
+
+        var contacts = new List<Contact>();
+        if (request.ContactIds is { Count: > 0 })
+        {
+            contacts = await db.Contacts
+                .Where(c => request.ContactIds.Contains(c.Id) && c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null)
+                .ToListAsync();
+            if (contacts.Count != request.ContactIds.Distinct().Count())
+                return BadRequest("One or more contacts were not found in this workspace");
+        }
+
+        var deal = new Deal
+        {
+            WorkspaceId = current.WorkspaceId,
+            PipelineId = pipeline.Id,
+            StageId = stage.Id,
+            Company = company,
+            AmountCents = request.AmountCents,
+            Currency = request.Currency,
+            ForecastCategory = request.ForecastCategory,
+            CustomFields = customFields,
+            Contacts = contacts,
+        };
+        db.Deals.Add(deal);
+        await db.SaveChangesAsync();
+        await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
+        await webhooks.Enqueue(current.WorkspaceId, "deal.created", new { dealId = deal.Id, stageId = stage.Id });
+
+        deal.Stage = stage;
+        return Ok(ToDealDetailDto(deal));
+    }
+
     [HttpPost("deals/{dealId}/move")]
     public async Task<IActionResult> MoveDeal(
         string dealId, MoveDealRequest request, [FromServices] JobQueueService queue, [FromServices] WebhookDeliveryService webhooks)

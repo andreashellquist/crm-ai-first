@@ -17,6 +17,19 @@ public record DealCardDto(
 
 public record MoveDealRequest(string StageId);
 
+// StageId is optional — omitted, it lands in the default pipeline's
+// lowest-Order stage (its entry point), the same place a brand-new lead
+// naturally starts. See PipelineController.CreateDeal.
+public record CreateDealRequest(
+    string CompanyName,
+    string? StageId,
+    int? AmountCents,
+    string? Currency,
+    string ForecastCategory,
+    List<string>? ContactIds,
+    Dictionary<string, JsonElement>? CustomFields
+);
+
 public record ScoreDealResponse(string JobId);
 
 public record DealDetailDto(

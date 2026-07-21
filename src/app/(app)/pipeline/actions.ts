@@ -3,6 +3,43 @@
 import { revalidatePath } from "next/cache";
 import { requireWorkspace } from "@/lib/workspace";
 
+export type CreateDealState = { error?: string };
+
+export async function createDealAction(_prevState: CreateDealState, formData: FormData): Promise<CreateDealState> {
+  const { api } = await requireWorkspace();
+
+  const companyName = formData.get("companyName");
+  if (typeof companyName !== "string" || !companyName.trim()) {
+    return { error: "Company name is required" };
+  }
+
+  const stageId = formData.get("stageId");
+  const amountDollars = formData.get("amount");
+  const currency = formData.get("currency");
+
+  const { error } = await api.POST("/api/deals", {
+    body: {
+      companyName,
+      stageId: typeof stageId === "string" && stageId ? stageId : null,
+      // The form collects whole-currency-unit amounts (e.g. "1000" meaning
+      // $1,000) since that's what a rep actually types — cents is a
+      // storage/API convention, not a UX one.
+      amountCents: typeof amountDollars === "string" && amountDollars ? Math.round(Number(amountDollars) * 100) : null,
+      currency: typeof currency === "string" && currency ? currency : null,
+      forecastCategory: "pipeline",
+      contactIds: null,
+      customFields: null,
+    },
+  });
+
+  if (error) {
+    return { error: typeof error === "string" ? error : "Could not create deal" };
+  }
+
+  revalidatePath("/pipeline");
+  return {};
+}
+
 export async function moveDealStageAction(input: { dealId: string; stageId: string }) {
   const { api } = await requireWorkspace();
   const { error } = await api.POST("/api/deals/{dealId}/move", {

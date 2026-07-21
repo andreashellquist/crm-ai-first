@@ -1396,6 +1396,55 @@
         }
       }
     },
+    "/api/deals": {
+      "post": {
+        "tags": [
+          "Pipeline"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDealRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDealRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/deals/{dealId}/move": {
       "post": {
         "tags": [
@@ -3806,6 +3855,62 @@
               "null",
               "string"
             ]
+          },
+          "customFields": {
+            "type": [
+              "null",
+              "object"
+            ]
+          }
+        }
+      },
+      "CreateDealRequest": {
+        "required": [
+          "companyName",
+          "stageId",
+          "amountCents",
+          "currency",
+          "forecastCategory",
+          "contactIds",
+          "customFields"
+        ],
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string"
+          },
+          "stageId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "amountCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "forecastCategory": {
+            "type": "string"
+          },
+          "contactIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           },
           "customFields": {
             "type": [

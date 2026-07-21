@@ -21,7 +21,7 @@ public class WebhookSubscriptionsController(AppDbContext db, CurrentUser current
 {
     public static readonly string[] ValidEventTypes =
     [
-        "deal.won", "deal.lost", "deal.stage_changed", "contact.created",
+        "deal.created", "deal.won", "deal.lost", "deal.stage_changed", "contact.created",
     ];
 
     [HttpGet]
