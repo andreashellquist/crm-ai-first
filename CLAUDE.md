@@ -499,6 +499,46 @@ too, all as full vertical slices (backend, xUnit coverage, frontend, e2e):
   entries" section with the same bar-chart-plus-CSV-export treatment as the
   other three reports.
 
+A fifth AI feature, **RAG over CRM history**, is now in — see
+`ai-features-architect`'s "for cross-record questions, retrieve Activities
+scoped to workspace + relevant Company/Contact via a filtered ... search"
+guidance. `RagQueryService` answers a free-text question ("what have we
+discussed with Acme about pricing") grounded in the workspace's own logged
+`Activity` history, via the same ILIKE-keyword-matching v1 tradeoff
+`SearchController` already made (not a vector store or Postgres full-text
+search — no embedding infrastructure exists in this app to stand up
+speculatively). A question asked with a `dealId`/`contactId`/`companyId`
+scope hint skips keyword matching entirely and reads only that record's own
+activities — the new global `/ask` page (an "Ask AI" nav link) doesn't set
+one, but the DTO/service support it for a future record-scoped entry point.
+Like every other AI feature, this goes through the job queue
+(`rag_query` job type in `JobWorker`) rather than blocking the request; the
+forced `answer_question` tool call returns both an answer and a list of
+citations (activity id/type/snippet/timestamp plus whichever of
+deal/contact/company it belongs to), and the frontend renders each citation
+as a link back to the record it came from — a grounded answer with no way to
+verify it isn't worth much. Workspace isolation is enforced the same way
+`SearchController` enforces it (every retrieval query is `WorkspaceId`-scoped
+before any keyword filter runs), and is explicitly covered by a dedicated
+test that plants a second workspace's activity and confirms it never reaches
+the prompt sent to Claude.
+
+While verifying this pass's e2e suite, two **pre-existing, unrelated** test
+flakiness sources in `pipeline.spec.ts` got root-caused and fixed rather than
+left as an accepted-flaky pattern (previously just noted as "known flaky,
+confirmed unrelated to changes via reruns" without a real fix): both of that
+file's write-and-verify tests waited on `page.waitForResponse` keyed on "any
+POST," which can resolve on `NotificationBell`'s own periodic
+Server-Action-based unread-count poll — also browser-visible as a POST to
+the same page URL — instead of the actual form/select submission being
+tested. Fixed by waiting on each form's own pending-state UI signal instead
+(same pattern `ai-features.spec.ts` already uses for its AI-feature
+buttons), plus a `toPass()`-wrapped reload-and-recheck for the stage-move
+test's server-persistence check. Worth knowing for any future e2e test on a
+page that renders the shared app header (i.e. every authenticated page):
+`waitForResponse` keyed on HTTP method alone is not a safe way to wait for a
+specific Server Action's effect.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
@@ -506,9 +546,9 @@ feature area; it says what phase the feature belongs to and which expert
 agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
-any actual email/calendar send capability, RAG over CRM history, AI-feature
-region controls (see `docs/REGIONAL_COMPLIANCE.md` §4), and the rest of
-Phase 2 (email/calendar sync with consent/suppression gating, billing — see
+any actual email/calendar send capability, AI-feature region controls (see
+`docs/REGIONAL_COMPLIANCE.md` §4), and the rest of Phase 2 (email/calendar
+sync with consent/suppression gating, billing — see
 `docs/LOCALIZED_BILLING.md` for what that future billing build needs to get
 right on tax from day one). **Phase 4 is complete** — see the sub-areas
 above.

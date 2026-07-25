@@ -11,6 +11,7 @@ record ScoreDealPayload(string DealId, string WorkspaceId);
 record DraftEmailPayload(string DealId, string WorkspaceId, string? Instruction);
 record SummarizeDealPayload(string DealId, string WorkspaceId);
 record NextBestActionPayload(string DealId, string WorkspaceId);
+record RagQueryPayload(string Question, string WorkspaceId, string? DealId, string? ContactId, string? CompanyId);
 record ImportContactsPayload(string CsvContent, Dictionary<string, string> ColumnMapping, string WorkspaceId);
 record RefreshReportsPayload(string WorkspaceId);
 record DeliverWebhookPayload(string DeliveryId);
@@ -85,6 +86,14 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
                 await notifications.Notify(payload.WorkspaceId, requestedBy, "ai_suggestion_ready", "deal", payload.DealId);
             }
 
+            return JsonSerializer.Serialize(result, ResultOptions);
+        },
+        ["rag_query"] = async (services, job) =>
+        {
+            var rag = services.GetRequiredService<RagQueryService>();
+            var payload = JsonSerializer.Deserialize<RagQueryPayload>(job.Payload, PayloadOptions)
+                ?? throw new InvalidOperationException("Invalid rag_query payload");
+            var result = await rag.AskQuestion(payload.Question, payload.WorkspaceId, payload.DealId, payload.ContactId, payload.CompanyId);
             return JsonSerializer.Serialize(result, ResultOptions);
         },
         ["import_contacts"] = async (services, job) =>

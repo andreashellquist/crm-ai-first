@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5080/"
+      "url": "http://localhost:5194/"
     }
   ],
   "paths": {
@@ -125,6 +125,55 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/ask": {
+      "post": {
+        "tags": [
+          "Ask"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskQuestionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskQuestionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskQuestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3717,6 +3766,49 @@
           }
         }
       },
+      "AskQuestionRequest": {
+        "required": [
+          "question",
+          "dealId",
+          "contactId",
+          "companyId"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "dealId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contactId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "companyId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AskQuestionResponse": {
+        "required": [
+          "jobId"
+        ],
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          }
+        }
+      },
       "AssignDealRequest": {
         "required": [
           "userId"
@@ -6399,6 +6491,9 @@
     },
     {
       "name": "ApiKeys"
+    },
+    {
+      "name": "Ask"
     },
     {
       "name": "AuditLog"

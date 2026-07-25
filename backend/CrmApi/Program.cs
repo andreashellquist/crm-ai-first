@@ -96,6 +96,7 @@ builder.Services.AddScoped<DealScoringService>();
 builder.Services.AddScoped<EmailDraftingService>();
 builder.Services.AddScoped<SummarizationService>();
 builder.Services.AddScoped<NextBestActionService>();
+builder.Services.AddScoped<RagQueryService>();
 builder.Services.AddScoped<ContactImportService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReportingService>();

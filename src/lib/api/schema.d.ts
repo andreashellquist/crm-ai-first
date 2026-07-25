@@ -136,6 +136,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AskQuestionRequest"];
+                    "text/json": components["schemas"]["AskQuestionRequest"];
+                    "application/*+json": components["schemas"]["AskQuestionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AskQuestionResponse"];
+                        "application/json": components["schemas"]["AskQuestionResponse"];
+                        "text/json": components["schemas"]["AskQuestionResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit-log": {
         parameters: {
             query?: never;
@@ -3190,6 +3233,15 @@ export interface components {
             revokedAt: null | string;
             /** Format: date-time */
             createdAt: string;
+        };
+        AskQuestionRequest: {
+            question: string;
+            dealId: null | string;
+            contactId: null | string;
+            companyId: null | string;
+        };
+        AskQuestionResponse: {
+            jobId: string;
         };
         AssignDealRequest: {
             userId: null | string;

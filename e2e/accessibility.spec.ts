@@ -61,3 +61,9 @@ test("settings page has no WCAG 2.1 AA violations", async ({ page }) => {
   await page.goto("/settings");
   await auditPage(page);
 });
+
+test("ask AI page has no WCAG 2.1 AA violations", async ({ page }) => {
+  await login(page);
+  await page.goto("/ask");
+  await auditPage(page);
+});

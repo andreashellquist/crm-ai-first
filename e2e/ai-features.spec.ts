@@ -71,3 +71,17 @@ test("next-best-action reaches a terminal state without console errors", async (
 
   expect(consoleErrors).toEqual([]);
 });
+
+test("ask AI reaches a terminal state without console errors", async ({ page }) => {
+  const consoleErrors = trackConsoleErrors(page);
+  await login(page);
+  await page.getByRole("link", { name: "Ask AI" }).click();
+  await expect(page).toHaveURL("/ask");
+
+  await page.getByPlaceholder("Ask a question about a deal, contact, or company…").fill("what have we discussed with Globex about pricing");
+  await page.getByRole("button", { name: "Ask" }).click();
+  await expect(page.getByRole("button", { name: "Thinking…" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Thinking…" })).toBeHidden({ timeout: 45_000 });
+
+  expect(consoleErrors).toEqual([]);
+});

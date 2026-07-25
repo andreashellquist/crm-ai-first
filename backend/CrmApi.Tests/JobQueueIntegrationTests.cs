@@ -231,4 +231,54 @@ public class JobQueueIntegrationTests(CrmApiFactory factory) : IntegrationTestBa
         Assert.Equal(1, snapshot.DealCount);
         Assert.Equal(200_00, snapshot.DealValueCents);
     }
+
+    [Fact]
+    public async Task RagQueryJob_OnSuccess_PersistsAnswerAndCitationsOnJob()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var company = TestData.Company(ws.Workspace, "Acme Rockets");
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne, company);
+        var activity = TestData.Activity(ws.Workspace, deal, "call", "Discussed pricing tiers with the Acme team.");
+        await WithDb(async db =>
+        {
+            db.Companies.Add(company);
+            db.Deals.Add(deal);
+            db.Activities.Add(activity);
+            await db.SaveChangesAsync();
+        });
+
+        Anthropic.NextResponse = _ => FakeAnthropicMessagesClient.ToolUseMessage("answer_question", new System.Text.Json.Nodes.JsonObject
+        {
+            ["answer"] = "Pricing was discussed on a call.",
+            ["citedActivityIndexes"] = new System.Text.Json.Nodes.JsonArray(0),
+        });
+        try
+        {
+            var askResponse = await ws.Client.PostAsJsonAsync("/api/ask", new AskQuestionRequest("what have we discussed with Acme about pricing", null, null, null));
+            askResponse.EnsureSuccessStatusCode();
+            var enqueued = await askResponse.Content.ReadFromJsonAsync<AskQuestionResponse>();
+            Assert.NotNull(enqueued);
+
+            await ProcessAllPendingJobsAsync();
+
+            var statusResponse = await ws.Client.GetFromJsonAsync<JobStatusResponse>($"/api/jobs/{enqueued!.JobId}");
+            Assert.NotNull(statusResponse);
+            Assert.Equal("succeeded", statusResponse!.Status);
+            Assert.NotNull(statusResponse.Result);
+            // The frontend parses Job.Result as plain JSON expecting
+            // camelCase keys — a case-sensitive check, not just
+            // deserialize-anything.
+            Assert.Contains("\"answer\":", statusResponse.Result);
+            Assert.Contains("\"citations\":", statusResponse.Result);
+
+            var result = JsonSerializer.Deserialize<RagAnswerDto>(statusResponse.Result!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.Equal("Pricing was discussed on a call.", result!.Answer);
+            var citation = Assert.Single(result.Citations);
+            Assert.Equal(activity.Id, citation.ActivityId);
+        }
+        finally
+        {
+            Anthropic.NextResponse = null;
+        }
+    }
 }
