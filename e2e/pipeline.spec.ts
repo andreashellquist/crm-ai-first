@@ -65,12 +65,14 @@ test("creates a new deal from the pipeline board and it lands in the first stage
   // useActionState's pending flips false as soon as createDealAction
   // returns, which can land slightly before Next.js finishes re-rendering
   // from the revalidatePath it triggered — give this its own generous
-  // window rather than relying on "Adding…" hiding alone. Verified via
-  // direct curl + xUnit that the backend create-and-persist path itself is
-  // reliable; this test has been observed needing just over 15s specifically
-  // when it lands ~30 tests into a single continuous dev-server run (never
-  // when run in isolation or early in a run) — 30s matches the same
-  // load-tolerant reasoning as ai-features.spec.ts's 45s AI-button waits.
+  // window rather than relying on "Adding…" hiding alone. Root-caused this
+  // occasionally needing more than 15s: `next dev` (Turbopack) itself
+  // sporadically logs "Error: aborted"/ECONNRESET on its own stderr around
+  // this point in a long continuous run, i.e. a dev-server-only connection
+  // hiccup — `pnpm build` is unaffected, and the backend create-and-persist
+  // path is independently verified reliable via direct curl + the xUnit
+  // suite. 30s matches the same load-tolerant reasoning as
+  // ai-features.spec.ts's 45s AI-button waits.
   await expect(page.locator('[data-testid^="deal-card-"]', { hasText: companyName })).toBeVisible({ timeout: 30_000 });
 });
 

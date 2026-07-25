@@ -70,6 +70,52 @@ jobs:
         env:
           TEST_DATABASE_URL: "Host=localhost;Port=5432;Database=crm_dotnet_test;Username=crm;Password=crm"
 
+  dependency-scan:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: pnpm install --frozen-lockfile
+
+      # pnpm audit exits non-zero the moment it finds any vulnerability, so
+      # no output parsing is needed here — unlike the .NET equivalent below.
+      # GHSA-mh99-v99m-4gvg (brace-expansion, transitive via eslint's and
+      # openapi-typescript's own pinned minimatch@3) is explicitly ignored:
+      # the only patched brace-expansion line (5.x) is a breaking rewrite
+      # incompatible with minimatch@3's API (verified locally — forcing it
+      # via pnpm.overrides breaks `pnpm lint`), and it's dev-tooling-only —
+      # no untrusted input reaches it in this app. Re-evaluate once eslint/
+      # openapi-typescript bump their own minimatch dependency.
+      - run: pnpm audit --ignore GHSA-mh99-v99m-4gvg
+
+      - run: dotnet restore backend/CrmApi.slnx
+
+      # `dotnet list package --vulnerable` always exits 0 even when it finds
+      # vulnerable packages (informational-only by design) — grep its own
+      # "has the following vulnerable packages" marker (verified against a
+      # real vulnerable package locally) and fail the step ourselves if
+      # present, rather than silently accepting whatever it prints.
+      - name: Scan .NET dependencies for known vulnerabilities
+        run: |
+          set -o pipefail
+          dotnet list backend/CrmApi.slnx package --vulnerable --include-transitive | tee /tmp/dotnet-vulnerable.txt
+          if grep -q "has the following vulnerable packages" /tmp/dotnet-vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages found — see output above."
+            exit 1
+          fi
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest

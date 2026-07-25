@@ -558,6 +558,29 @@ a shared key store (Azure Key Vault, Redis, a blob store) instead, not
 built here per the same "don't stand up speculative infra" discipline as
 everywhere else in this app.
 
+The SOC 2 readiness doc's other cheap-to-close, code-only gap —
+dependency/vulnerability scanning in CI — is now also closed. A new
+`dependency-scan` job in `.github/workflows/ci.yml` runs `pnpm audit` and
+`dotnet list package --vulnerable --include-transitive` on every push/PR
+(the latter always exits 0 by design even when it finds something, so the
+job greps its own output and fails itself if it does — verified locally
+against a deliberately-added known-vulnerable package before writing the
+real check); `.github/dependabot.yml` adds weekly automated update PRs for
+all three ecosystems in this repo (npm, nuget, github-actions). Building
+this surfaced a real, live issue it exists to catch: Next.js was on
+16.2.10, which has several high-severity CVEs (SSRF, a middleware bypass,
+DoS, unauthenticated disclosure of internal Server Function endpoints)
+patched in 16.2.11 — upgraded, plus `pnpm.overrides` for three other
+vulnerable transitive dependencies (`postcss`, `sharp`, `js-yaml`). **One
+accepted, documented exception**: `brace-expansion` (transitive via
+`eslint`'s and `openapi-typescript`'s own pinned `minimatch@3`) stays on
+its vulnerable version — the only patched line is a breaking rewrite
+incompatible with `minimatch@3`'s API (forcing it via an override breaks
+`pnpm lint`, confirmed locally), and it's dev-tooling-only with no
+untrusted input reaching it in this app's actual attack surface —
+`pnpm audit --ignore GHSA-mh99-v99m-4gvg` names the exception explicitly
+rather than silently passing.
+
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
 intentionally vague brief — is still ahead. Read it before starting a new
