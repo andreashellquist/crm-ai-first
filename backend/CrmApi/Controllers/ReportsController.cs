@@ -12,7 +12,7 @@ namespace CrmApi.Controllers;
 [Authorize]
 public class ReportsController(AppDbContext db, CurrentUser current) : ControllerBase
 {
-    private static readonly string[] ValidExportTypes = ["pipeline", "forecast", "activity"];
+    private static readonly string[] ValidExportTypes = ["pipeline", "forecast", "activity", "funnel"];
 
     [HttpGet]
     public async Task<ActionResult<ReportsResponse>> Get()
@@ -22,7 +22,7 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
             .FirstOrDefaultAsync();
         if (pipeline is null) return NotFound();
 
-        var (pipelineRows, forecastRows, activityRows, refreshedAt) = await LoadReportData(pipeline.Id);
+        var (pipelineRows, forecastRows, activityRows, funnelRows, refreshedAt) = await LoadReportData(pipeline.Id);
 
         var terminologyJson = await db.WorkspaceSettings
             .Where(s => s.WorkspaceId == current.WorkspaceId)
@@ -40,7 +40,8 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
             ? await FormatInCallerTimezoneAsync(refreshedAtValue)
             : null;
 
-        return Ok(new ReportsResponse(dealTerm, dealTermPlural, defaultCurrency, pipelineRows, forecastRows, activityRows, refreshedAt, refreshedAtDisplay));
+        return Ok(new ReportsResponse(
+            dealTerm, dealTermPlural, defaultCurrency, pipelineRows, forecastRows, activityRows, funnelRows, refreshedAt, refreshedAtDisplay));
     }
 
     // Reports refresh on the writes that change what they show
@@ -67,7 +68,7 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
             .FirstOrDefaultAsync();
         if (pipeline is null) return NotFound();
 
-        var (pipelineRows, forecastRows, activityRows, _) = await LoadReportData(pipeline.Id);
+        var (pipelineRows, forecastRows, activityRows, funnelRows, _) = await LoadReportData(pipeline.Id);
 
         var csv = type switch
         {
@@ -77,6 +78,9 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
             "forecast" => CsvWriter.Write(
                 ["Forecast category", "Deal count", "Deal value (cents)", "Weighted value (cents)"],
                 forecastRows.Select(r => new[] { r.ForecastCategory, r.DealCount.ToString(), r.DealValueCents.ToString(), r.WeightedValueCents.ToString() })),
+            "funnel" => CsvWriter.Write(
+                ["Stage", "Entry count"],
+                funnelRows.Select(r => new[] { r.StageName, r.EntryCount.ToString() })),
             _ => CsvWriter.Write(
                 ["Date", "Activity type", "Count"],
                 activityRows.Select(r => new[] { r.Date.ToString("yyyy-MM-dd"), r.Type, r.Count.ToString() })),
@@ -111,7 +115,7 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
         return $"{local:MMM d, yyyy h:mm tt} ({timezone.Id})";
     }
 
-    private async Task<(List<PipelineReportRow>, List<ForecastReportRow>, List<ActivityReportRow>, DateTime?)> LoadReportData(string pipelineId)
+    private async Task<(List<PipelineReportRow>, List<ForecastReportRow>, List<ActivityReportRow>, List<FunnelReportRow>, DateTime?)> LoadReportData(string pipelineId)
     {
         var stages = await db.Stages
             .Where(s => s.PipelineId == pipelineId)
@@ -139,8 +143,15 @@ public class ReportsController(AppDbContext db, CurrentUser current) : Controlle
             .Select(m => new ActivityReportRow(m.Date, m.Type, m.Count))
             .ToListAsync();
 
+        var funnelSnapshots = await db.FunnelSnapshots
+            .Where(s => s.WorkspaceId == current.WorkspaceId && s.PipelineId == pipelineId)
+            .ToDictionaryAsync(s => s.StageId);
+        var funnelRows = stages
+            .Select(stage => new FunnelReportRow(stage.Id, stage.Name, funnelSnapshots.TryGetValue(stage.Id, out var snapshot) ? snapshot.EntryCount : 0))
+            .ToList();
+
         var refreshedAt = pipelineSnapshots.Count > 0 ? pipelineSnapshots.Values.Max(s => s.RefreshedAt) : (DateTime?)null;
 
-        return (pipelineRows, forecastRows, activityRows, refreshedAt);
+        return (pipelineRows, forecastRows, activityRows, funnelRows, refreshedAt);
     }
 }

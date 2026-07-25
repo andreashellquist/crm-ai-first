@@ -104,6 +104,38 @@ public class ContactsController(AppDbContext db, CurrentUser current, AuditLogSe
         c.Id, c.FirstName, c.LastName, c.Email, c.Company?.Name, c.LifecycleStage,
         JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(c.CustomFields) ?? []);
 
+    // A real contact detail page — previously didn't exist at all, so
+    // global search results for contacts had nowhere to link to but the
+    // filterable contacts list. Deliberately not the same endpoint as
+    // Export: this is routine viewing and must never write an audit-log
+    // entry meant for actual data-subject access requests.
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ContactDetailDto>> Get(string id)
+    {
+        var contact = await db.Contacts
+            .Include(c => c.Company)
+            .Include(c => c.Activities.OrderByDescending(a => a.CreatedAt))
+            .Include(c => c.Deals).ThenInclude(d => d.Stage)
+            .Include(c => c.Deals).ThenInclude(d => d.Company)
+            .FirstOrDefaultAsync(c => c.Id == id && c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null);
+        if (contact is null) return NotFound();
+
+        return Ok(new ContactDetailDto(
+            contact.Id,
+            contact.FirstName,
+            contact.LastName,
+            contact.Email,
+            contact.Phone,
+            contact.LifecycleStage,
+            contact.CompanyId,
+            contact.Company?.Name,
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(contact.CustomFields) ?? [],
+            contact.Activities.Select(a => new ContactDetailActivityDto(a.Id, a.Type, a.Body, a.CreatedAt)).ToList(),
+            contact.Deals.Where(d => d.DeletedAt == null)
+                .Select(d => new ContactDetailDealDto(d.Id, d.Company?.Name ?? "Untitled deal", d.Stage!.Name, d.AmountCents, d.Currency)).ToList()
+        ));
+    }
+
     // Synchronous — parsing headers + a 10-row preview is fast, and the
     // frontend needs it immediately to build the column-mapping UI (no
     // job/poll round trip for this step). See the csv-import-dedupe skill.

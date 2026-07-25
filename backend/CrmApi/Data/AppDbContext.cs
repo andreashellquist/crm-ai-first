@@ -31,6 +31,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<SsoConnection> SsoConnections => Set<SsoConnection>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DealStageChange> DealStageChanges => Set<DealStageChange>();
+    public DbSet<FunnelSnapshot> FunnelSnapshots => Set<FunnelSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -102,6 +104,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(d => d.CompanyId).OnDelete(DeleteBehavior.Restrict);
             e.HasMany(d => d.Contacts).WithMany(c => c.Deals)
                 .UsingEntity(j => j.ToTable("DealContacts"));
+            // SetNull, not Restrict/Cascade: removing a user must never
+            // block on or delete a Deal they used to be assigned to.
+            e.HasOne(d => d.AssignedToUser).WithMany()
+                .HasForeignKey(d => d.AssignedToUserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Activity>(e =>
@@ -154,6 +160,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(t => t.CompanyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(t => t.Deal).WithMany(d => d.Tasks)
                 .HasForeignKey(t => t.DealId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(t => t.AssignedToUser).WithMany()
+                .HasForeignKey(t => t.AssignedToUserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Notification>(e =>
@@ -203,6 +211,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(m => new { m.WorkspaceId, m.Date, m.Type });
             e.HasOne(m => m.Workspace).WithMany()
                 .HasForeignKey(m => m.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DealStageChange>(e =>
+        {
+            e.HasIndex(s => new { s.WorkspaceId, s.DealId });
+            e.HasIndex(s => new { s.WorkspaceId, s.PipelineId, s.ToStageId });
+            e.HasOne(s => s.Workspace).WithMany()
+                .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FunnelSnapshot>(e =>
+        {
+            e.HasIndex(s => new { s.WorkspaceId, s.PipelineId, s.StageId });
+            e.HasOne(s => s.Workspace).WithMany()
+                .HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Listing>(e =>

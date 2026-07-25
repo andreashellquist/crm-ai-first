@@ -65,4 +65,28 @@ public class CompaniesControllerTests(CrmApiFactory factory) : IntegrationTestBa
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Get_ReturnsAssociatedContactsAndDeals()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var company = TestData.Company(ws.Workspace, "Acme");
+        var contact = TestData.Contact(ws.Workspace, "Jane", company);
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne, company, amountCents: 250_00);
+        await WithDb(async db =>
+        {
+            db.Companies.Add(company);
+            db.Contacts.Add(contact);
+            db.Deals.Add(deal);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await ws.Client.GetAsync($"/api/companies/{company.Id}");
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<CompanyDetailDto>();
+        Assert.Equal("Acme", detail!.Name);
+        Assert.Contains(detail.Contacts, c => c.Name == "Jane");
+        Assert.Contains(detail.Deals, d => d.AmountCents == 250_00);
+    }
 }

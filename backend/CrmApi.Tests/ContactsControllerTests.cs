@@ -112,4 +112,59 @@ public class ContactsControllerTests(CrmApiFactory factory) : IntegrationTestBas
         var names = contacts!.Select(c => c.FirstName).ToList();
         Assert.True(names.IndexOf("Amy") < names.IndexOf("Zed"));
     }
+
+    [Fact]
+    public async Task Get_ReturnsCompanyActivitiesAndDeals()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var company = TestData.Company(ws.Workspace, "Acme");
+        var contact = TestData.Contact(ws.Workspace, "Jane", company);
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne, company, amountCents: 300_00);
+        deal.Contacts.Add(contact);
+        var activity = TestData.Activity(ws.Workspace, deal, "call", "Intro call");
+        activity.ContactId = contact.Id;
+        await WithDb(async db =>
+        {
+            db.Companies.Add(company);
+            db.Contacts.Add(contact);
+            db.Deals.Add(deal);
+            db.Activities.Add(activity);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await ws.Client.GetAsync($"/api/contacts/{contact.Id}");
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<ContactDetailDto>();
+        Assert.Equal("Jane", detail!.FirstName);
+        Assert.Equal("Acme", detail.CompanyName);
+        Assert.Contains(detail.Activities, a => a.Body == "Intro call");
+        Assert.Contains(detail.Deals, d => d.AmountCents == 300_00);
+    }
+
+    [Fact]
+    public async Task Get_ForAnotherWorkspacesContact_ReturnsNotFound()
+    {
+        var owner = await SeedWorkspaceAsync();
+        var intruder = await SeedWorkspaceAsync();
+        var contact = TestData.Contact(owner.Workspace, "Jane");
+        await WithDb(async db => { db.Contacts.Add(contact); await db.SaveChangesAsync(); });
+
+        var response = await intruder.Client.GetAsync($"/api/contacts/{contact.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_DoesNotWriteAnAuditLogEntry()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var contact = TestData.Contact(ws.Workspace, "Jane");
+        await WithDb(async db => { db.Contacts.Add(contact); await db.SaveChangesAsync(); });
+
+        (await ws.Client.GetAsync($"/api/contacts/{contact.Id}")).EnsureSuccessStatusCode();
+
+        var auditLogCount = await WithDb(db => db.AuditLogs.CountAsync(l => l.TargetId == contact.Id));
+        Assert.Equal(0, auditLogCount);
+    }
 }

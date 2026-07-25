@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CrmApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CrmApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260721070339_AddAssignedToUser")]
+    partial class AddAssignedToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -370,42 +373,6 @@ namespace CrmApi.Migrations
                     b.ToTable("Deals");
                 });
 
-            modelBuilder.Entity("CrmApi.Models.DealStageChange", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("ChangedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DealId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FromStageId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PipelineId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ToStageId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("WorkspaceId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WorkspaceId", "DealId");
-
-                    b.HasIndex("WorkspaceId", "PipelineId", "ToStageId");
-
-                    b.ToTable("DealStageChanges");
-                });
-
             modelBuilder.Entity("CrmApi.Models.FieldDefinition", b =>
                 {
                     b.Property<string>("Id")
@@ -482,36 +449,6 @@ namespace CrmApi.Migrations
                     b.HasIndex("WorkspaceId", "PipelineId", "ForecastCategory");
 
                     b.ToTable("ForecastSnapshots");
-                });
-
-            modelBuilder.Entity("CrmApi.Models.FunnelSnapshot", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
-
-                    b.Property<int>("EntryCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PipelineId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("RefreshedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("StageId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("WorkspaceId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WorkspaceId", "PipelineId", "StageId");
-
-                    b.ToTable("FunnelSnapshots");
                 });
 
             modelBuilder.Entity("CrmApi.Models.Job", b =>
@@ -1291,17 +1228,6 @@ namespace CrmApi.Migrations
                     b.Navigation("Workspace");
                 });
 
-            modelBuilder.Entity("CrmApi.Models.DealStageChange", b =>
-                {
-                    b.HasOne("CrmApi.Models.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Workspace");
-                });
-
             modelBuilder.Entity("CrmApi.Models.FieldDefinition", b =>
                 {
                     b.HasOne("CrmApi.Models.Workspace", "Workspace")
@@ -1314,17 +1240,6 @@ namespace CrmApi.Migrations
                 });
 
             modelBuilder.Entity("CrmApi.Models.ForecastSnapshot", b =>
-                {
-                    b.HasOne("CrmApi.Models.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("CrmApi.Models.FunnelSnapshot", b =>
                 {
                     b.HasOne("CrmApi.Models.Workspace", "Workspace")
                         .WithMany()

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:5194";
-const VALID_TYPES = ["pipeline", "forecast", "activity"];
+const VALID_TYPES = ["pipeline", "forecast", "activity", "funnel"];
 
 // A plain <a href> can't call the .NET API directly — the browser never
 // talks to it, per this app's architecture (no CORS surface, the session

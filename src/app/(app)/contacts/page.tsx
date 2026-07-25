@@ -54,7 +54,11 @@ export default async function ContactsPage({
               const name = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—";
               return (
                 <tr key={contact.id} className="border-t border-neutral-100">
-                  <td className="px-4 py-2">{name}</td>
+                  <td className="px-4 py-2">
+                    <Link href={`/contacts/${contact.id}`} className="text-neutral-800 underline hover:text-neutral-950">
+                      {name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2 text-neutral-600">{contact.email ?? "—"}</td>
                   <td className="px-4 py-2 text-neutral-600">{contact.companyName ?? "—"}</td>
                   <td className="px-4 py-2 text-neutral-600">{contact.lifecycleStage}</td>

@@ -17,6 +17,10 @@ public record DealCardDto(
 
 public record MoveDealRequest(string StageId);
 
+public record AddDealContactRequest(string ContactId);
+
+public record AssignDealRequest(string? UserId);
+
 // StageId is optional — omitted, it lands in the default pipeline's
 // lowest-Order stage (its entry point), the same place a brand-new lead
 // naturally starts. See PipelineController.CreateDeal.
@@ -45,9 +49,17 @@ public record DealDetailDto(
     DateTime? AiSummarizedAt,
     int ActivitiesSinceSummary,
     List<string> ContactNames,
+    List<ContactOptionDto> Contacts,
     List<ActivityDto> Activities,
-    Dictionary<string, JsonElement> CustomFields
+    Dictionary<string, JsonElement> CustomFields,
+    string? AssignedToUserId,
+    string? AssignedToUserName
 );
+
+// A minimal contact shape for pickers (add-to-deal, assignee lists) — not
+// the full ContactDto, which carries custom fields/lifecycle stage this UI
+// doesn't need.
+public record ContactOptionDto(string Id, string Name);
 
 public record UpdateDealRequest(
     int? AmountCents,

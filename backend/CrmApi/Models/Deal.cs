@@ -7,6 +7,10 @@ public class Deal
     public required string PipelineId { get; set; }
     public required string StageId { get; set; }
     public string? CompanyId { get; set; }
+    // Who owns working this deal — previously nothing modeled this at all,
+    // which is why the deal_assigned notification trigger had no real event
+    // to fire on. See PipelineController.AssignDeal.
+    public string? AssignedToUserId { get; set; }
     public int? AmountCents { get; set; }
     public string? Currency { get; set; }
     public string ForecastCategory { get; set; } = "pipeline";
@@ -36,6 +40,7 @@ public class Deal
     public Pipeline? Pipeline { get; set; }
     public Stage? Stage { get; set; }
     public Company? Company { get; set; }
+    public User? AssignedToUser { get; set; }
     public List<Contact> Contacts { get; set; } = [];
     public List<Activity> Activities { get; set; } = [];
     public List<TaskItem> Tasks { get; set; } = [];

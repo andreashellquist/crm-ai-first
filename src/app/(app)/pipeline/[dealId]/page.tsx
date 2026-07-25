@@ -7,6 +7,9 @@ import { DraftEmail } from "./draft-email";
 import { DealSummary } from "./deal-summary";
 import { NextBestAction } from "./next-best-action";
 import { ListingPanel } from "./listing-panel";
+import { AssignDealSelect } from "./assign-deal-select";
+import { DealContactsSection } from "./deal-contacts-section";
+import { DealTasksSection } from "./deal-tasks-section";
 
 const ACTIVITY_LABELS: Record<string, string> = {
   call: "Call",
@@ -25,6 +28,13 @@ export default async function DealDetailPage({
 
   const { data: deal } = await api.GET("/api/deals/{dealId}", { params: { path: { dealId } } });
   if (!deal) notFound();
+
+  const [{ data: members }, { data: allContacts }, { data: tasks }] = await Promise.all([
+    api.GET("/api/members"),
+    api.GET("/api/contacts"),
+    api.GET("/api/tasks", { params: { query: { dealId } } }),
+  ]);
+  const memberOptions = (members ?? []).map((m) => ({ userId: m.userId, name: m.name, email: m.email }));
 
   // Optional module (workspace-customization skill §4) — only fetched/shown
   // when this workspace has "listings" enabled; absent entirely otherwise,
@@ -46,6 +56,9 @@ export default async function DealDetailPage({
         <p className="text-sm text-neutral-500">
           {deal.stageName} · {formatAmount(deal.amountCents, deal.currency, defaultCurrency) ?? "No amount set"}
         </p>
+        <div className="mt-2">
+          <AssignDealSelect dealId={deal.id} assignedToUserId={deal.assignedToUserId ?? null} members={memberOptions} />
+        </div>
       </div>
 
       {deal.aiScore != null ? (
@@ -64,16 +77,16 @@ export default async function DealDetailPage({
         activitiesSinceSummary={Number(deal.activitiesSinceSummary)}
       />
 
-      {deal.contactNames.length > 0 ? (
-        <div>
-          <h2 className="text-sm font-semibold text-neutral-700">Contacts</h2>
-          <ul className="mt-1 text-sm text-neutral-600">
-            {deal.contactNames.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <DealContactsSection
+        dealId={deal.id}
+        contacts={deal.contacts.map((c) => ({ id: c.id, name: c.name }))}
+        allContacts={(allContacts ?? []).map((c) => ({
+          id: c.id,
+          name: [c.firstName, c.lastName].filter(Boolean).join(" ") || c.email || c.id,
+        }))}
+      />
+
+      <DealTasksSection dealId={deal.id} tasks={tasks ?? []} members={memberOptions} />
 
       <NextBestAction dealId={deal.id} />
 

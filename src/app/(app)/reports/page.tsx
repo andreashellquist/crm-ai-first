@@ -35,6 +35,7 @@ export default async function ReportsPage() {
 
   const maxPipelineValue = Math.max(...report.pipeline.map((r) => Number(r.dealValueCents)), 0);
   const maxForecastValue = Math.max(...report.forecast.map((r) => Number(r.dealValueCents)), 0);
+  const maxFunnelValue = Math.max(...report.funnel.map((r) => Number(r.entryCount)), 0);
 
   const activityTotals = new Map<string, number>();
   for (const row of report.activity) {
@@ -127,6 +128,42 @@ export default async function ReportsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-2 text-neutral-600">{formatAmount(row.weightedValueCents, report.defaultCurrency, report.defaultCurrency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-neutral-700">Funnel — stage entries</h2>
+          <a href="/api/reports/export?type=funnel" className="text-xs text-neutral-500 underline hover:text-neutral-900">
+            Export CSV
+          </a>
+        </div>
+        {report.funnel.length === 0 ? (
+          <p className="text-sm text-neutral-500">No stage history yet.</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-neutral-200">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Stage</th>
+                  <th className="w-2/3 px-4 py-2 font-medium">Entries</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.funnel.map((row) => (
+                  <tr key={row.stageId} className="border-t border-neutral-100">
+                    <td className="px-4 py-2">{row.stageName}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <Bar value={Number(row.entryCount)} max={maxFunnelValue} />
+                        <span className="whitespace-nowrap text-xs text-neutral-500">{row.entryCount}</span>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

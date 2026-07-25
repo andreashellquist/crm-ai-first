@@ -25,11 +25,22 @@ public class CompaniesController(AppDbContext db, CurrentUser current) : Control
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<CompanyDto>> Get(string id)
+    public async Task<ActionResult<CompanyDetailDto>> Get(string id)
     {
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == id && c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null);
+        var company = await db.Companies
+            .Include(c => c.Contacts.Where(ct => ct.DeletedAt == null))
+            .Include(c => c.Deals).ThenInclude(d => d.Stage)
+            .FirstOrDefaultAsync(c => c.Id == id && c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null);
         if (company is null) return NotFound();
-        return Ok(ToDto(company));
+
+        return Ok(new CompanyDetailDto(
+            company.Id,
+            company.Name,
+            company.Domain,
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(company.CustomFields) ?? [],
+            company.Contacts.Select(c => new ContactOptionDto(c.Id, string.Join(" ", new[] { c.FirstName, c.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))))).ToList(),
+            company.Deals.Where(d => d.DeletedAt == null).Select(d => new CompanyDetailDealDto(d.Id, d.Stage!.Name, d.AmountCents, d.Currency)).ToList()
+        ));
     }
 
     [HttpPut("{id}")]

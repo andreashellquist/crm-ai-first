@@ -7,12 +7,6 @@ import { searchAction, type SearchResults } from "./search-actions";
 
 const DEBOUNCE_MS = 250;
 
-// Deals have a real detail page (/pipeline/{id}) to link to. Contacts and
-// companies don't have their own detail pages in this app yet — clicking a
-// contact/company result instead lands on the contacts list pre-filtered by
-// the same search term (ContactsController.List's `q` param matches the
-// same fields this search does), which at least surfaces the record rather
-// than going nowhere. Revisit once contact/company detail pages exist.
 export function GlobalSearch() {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -91,7 +85,7 @@ export function GlobalSearch() {
           {results?.contacts.length ? (
             <ResultGroup title="Contacts">
               {results.contacts.map((r) => (
-                <Link key={r.id} href={contactsListHref()} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
+                <Link key={r.id} href={`/contacts/${r.id}`} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
                   <span className="text-neutral-800">{r.label}</span>
                   {r.sublabel ? <span className="ml-1 text-xs text-neutral-500">{r.sublabel}</span> : null}
                 </Link>
@@ -101,7 +95,7 @@ export function GlobalSearch() {
           {results?.companies.length ? (
             <ResultGroup title="Companies">
               {results.companies.map((r) => (
-                <Link key={r.id} href={contactsListHref()} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
+                <Link key={r.id} href={`/companies/${r.id}`} onClick={handleResultClick} className="block px-3 py-2 text-sm hover:bg-neutral-50">
                   <span className="text-neutral-800">{r.label}</span>
                   {r.sublabel ? <span className="ml-1 text-xs text-neutral-500">{r.sublabel}</span> : null}
                 </Link>

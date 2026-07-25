@@ -70,4 +70,10 @@ public static class TestData
         Type = type,
         Body = body,
     };
+
+    public static TaskItem TaskItem(Workspace workspace, string title = "Test task") => new()
+    {
+        WorkspaceId = workspace.Id,
+        Title = title,
+    };
 }

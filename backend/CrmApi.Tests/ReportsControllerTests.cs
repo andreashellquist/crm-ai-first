@@ -98,4 +98,39 @@ public class ReportsControllerTests(CrmApiFactory factory) : IntegrationTestBase
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Get_FunnelReflectsDealCreationAndMovement()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var createResponse = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest($"Co {Guid.NewGuid():N}", null, null, null, "pipeline", null, null));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<DealDetailDto>();
+
+        var moveResponse = await ws.Client.PostAsJsonAsync($"/api/deals/{created!.Id}/move", new MoveDealRequest(ws.StageTwo.Id));
+        moveResponse.EnsureSuccessStatusCode();
+        await ProcessAllPendingJobsAsync();
+
+        var report = await ws.Client.GetFromJsonAsync<ReportsResponse>("/api/reports");
+
+        var stageOneFunnel = report!.Funnel.Single(r => r.StageId == ws.StageOne.Id);
+        var stageTwoFunnel = report.Funnel.Single(r => r.StageId == ws.StageTwo.Id);
+        Assert.Equal(1, stageOneFunnel.EntryCount); // creation placed it there
+        Assert.Equal(1, stageTwoFunnel.EntryCount); // then moved here
+    }
+
+    [Fact]
+    public async Task Export_Funnel_ReturnsCsvWithHeaderRow()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.GetAsync("/api/reports/export?type=funnel");
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("text/csv", response.Content.Headers.ContentType?.MediaType);
+        var csv = await response.Content.ReadAsStringAsync();
+        Assert.StartsWith("Stage,Entry count", csv);
+    }
 }

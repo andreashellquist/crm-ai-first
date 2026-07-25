@@ -411,17 +411,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompanyDto"
+                  "$ref": "#/components/schemas/CompanyDetailDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompanyDto"
+                  "$ref": "#/components/schemas/CompanyDetailDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompanyDto"
+                  "$ref": "#/components/schemas/CompanyDetailDto"
                 }
               }
             }
@@ -594,6 +594,65 @@
         }
       }
     },
+    "/api/contacts/{id}": {
+      "get": {
+        "tags": [
+          "Contacts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactDetailDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Contacts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/contacts/import/preview": {
       "post": {
         "tags": [
@@ -727,28 +786,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/contacts/{id}": {
-      "delete": {
-        "tags": [
-          "Contacts"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -1487,6 +1524,65 @@
         }
       }
     },
+    "/api/deals/{dealId}/assign": {
+      "put": {
+        "tags": [
+          "Pipeline"
+        ],
+        "parameters": [
+          {
+            "name": "dealId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDealRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDealRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/deals/{dealId}/score": {
       "post": {
         "tags": [
@@ -1677,6 +1773,95 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/deals/{dealId}/contacts": {
+      "post": {
+        "tags": [
+          "Pipeline"
+        ],
+        "parameters": [
+          {
+            "name": "dealId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDealContactRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDealContactRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDealContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deals/{dealId}/contacts/{contactId}": {
+      "delete": {
+        "tags": [
+          "Pipeline"
+        ],
+        "parameters": [
+          {
+            "name": "dealId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contactId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -3478,6 +3663,17 @@
           }
         }
       },
+      "AddDealContactRequest": {
+        "required": [
+          "contactId"
+        ],
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string"
+          }
+        }
+      },
       "ApiKeyDto": {
         "required": [
           "id",
@@ -3518,6 +3714,20 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "AssignDealRequest": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3580,6 +3790,78 @@
           }
         }
       },
+      "CompanyDetailDealDto": {
+        "required": [
+          "id",
+          "stageName",
+          "amountCents",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stageName": {
+            "type": "string"
+          },
+          "amountCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CompanyDetailDto": {
+        "required": [
+          "id",
+          "name",
+          "domain",
+          "customFields",
+          "contacts",
+          "deals"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "domain": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customFields": {
+            "type": "object"
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactOptionDto"
+            }
+          },
+          "deals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompanyDetailDealDto"
+            }
+          }
+        }
+      },
       "CompanyDto": {
         "required": [
           "id",
@@ -3603,6 +3885,144 @@
           },
           "customFields": {
             "type": "object"
+          }
+        }
+      },
+      "ContactDetailActivityDto": {
+        "required": [
+          "id",
+          "type",
+          "body",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ContactDetailDealDto": {
+        "required": [
+          "id",
+          "title",
+          "stageName",
+          "amountCents",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stageName": {
+            "type": "string"
+          },
+          "amountCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ContactDetailDto": {
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "lifecycleStage",
+          "companyId",
+          "companyName",
+          "customFields",
+          "activities",
+          "deals"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lifecycleStage": {
+            "type": "string"
+          },
+          "companyId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "companyName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customFields": {
+            "type": "object"
+          },
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactDetailActivityDto"
+            }
+          },
+          "deals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactDetailDealDto"
+            }
           }
         }
       },
@@ -3790,6 +4210,21 @@
           "exportedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ContactOptionDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -4040,6 +4475,12 @@
               "null",
               "string"
             ]
+          },
+          "assignedToUserId": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4212,8 +4653,11 @@
           "aiSummarizedAt",
           "activitiesSinceSummary",
           "contactNames",
+          "contacts",
           "activities",
-          "customFields"
+          "customFields",
+          "assignedToUserId",
+          "assignedToUserName"
         ],
         "type": "object",
         "properties": {
@@ -4286,6 +4730,12 @@
               "type": "string"
             }
           },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactOptionDto"
+            }
+          },
           "activities": {
             "type": "array",
             "items": {
@@ -4294,6 +4744,18 @@
           },
           "customFields": {
             "type": "object"
+          },
+          "assignedToUserId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assignedToUserName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4401,6 +4863,30 @@
             "format": "int32"
           },
           "weightedValueCents": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "FunnelReportRow": {
+        "required": [
+          "stageId",
+          "stageName",
+          "entryCount"
+        ],
+        "type": "object",
+        "properties": {
+          "stageId": {
+            "type": "string"
+          },
+          "stageName": {
+            "type": "string"
+          },
+          "entryCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4978,6 +5464,7 @@
           "pipeline",
           "forecast",
           "activity",
+          "funnel",
           "refreshedAt",
           "refreshedAtDisplay"
         ],
@@ -5008,6 +5495,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ActivityReportRow"
+            }
+          },
+          "funnel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunnelReportRow"
             }
           },
           "refreshedAt": {
@@ -5401,7 +5894,9 @@
           "aiSuggested",
           "contactId",
           "companyId",
-          "dealId"
+          "dealId",
+          "assignedToUserId",
+          "assignedToUserName"
         ],
         "type": "object",
         "properties": {
@@ -5441,6 +5936,18 @@
             ]
           },
           "dealId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assignedToUserId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assignedToUserName": {
             "type": [
               "null",
               "string"
@@ -5652,6 +6159,12 @@
           },
           "completed": {
             "type": "boolean"
+          },
+          "assignedToUserId": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

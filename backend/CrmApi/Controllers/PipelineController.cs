@@ -128,6 +128,16 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             Contacts = contacts,
         };
         db.Deals.Add(deal);
+        // FromStageId null = initial placement, not a transition from
+        // another stage — see DealStageChange's header comment.
+        db.DealStageChanges.Add(new DealStageChange
+        {
+            WorkspaceId = current.WorkspaceId,
+            DealId = deal.Id,
+            PipelineId = pipeline.Id,
+            FromStageId = null,
+            ToStageId = stage.Id,
+        });
         await db.SaveChangesAsync();
         await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
         await webhooks.Enqueue(current.WorkspaceId, "deal.created", new { dealId = deal.Id, stageId = stage.Id });
@@ -150,6 +160,18 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
         var previousStageId = deal.StageId;
         deal.StageId = stage.Id;
         deal.UpdatedAt = DateTime.UtcNow;
+
+        if (previousStageId != stage.Id)
+        {
+            db.DealStageChanges.Add(new DealStageChange
+            {
+                WorkspaceId = current.WorkspaceId,
+                DealId = deal.Id,
+                PipelineId = deal.PipelineId,
+                FromStageId = previousStageId,
+                ToStageId = stage.Id,
+            });
+        }
         await db.SaveChangesAsync();
         await queue.Enqueue("refresh_reports", new { workspaceId = current.WorkspaceId }, current.WorkspaceId);
 
@@ -163,6 +185,41 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
                 await webhooks.Enqueue(current.WorkspaceId, "deal.lost", new { dealId = deal.Id, stageId = stage.Id });
         }
         return NoContent();
+    }
+
+    // Separate from UpdateDeal deliberately — same "small, dedicated
+    // mutation endpoint" shape as /move, rather than requiring the caller to
+    // resend amount/currency/forecastCategory/customFields just to change
+    // who owns the deal.
+    [HttpPut("deals/{dealId}/assign")]
+    public async Task<ActionResult<DealDetailDto>> AssignDeal(string dealId, AssignDealRequest request, [FromServices] NotificationService notifications)
+    {
+        var deal = await db.Deals
+            .Include(d => d.Stage)
+            .Include(d => d.Company)
+            .Include(d => d.Contacts)
+            .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt))
+            .Include(d => d.AssignedToUser)
+            .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
+        if (deal is null) return NotFound();
+
+        if (request.UserId is not null)
+        {
+            var isMember = await db.WorkspaceMembers.AnyAsync(m => m.UserId == request.UserId && m.WorkspaceId == current.WorkspaceId);
+            if (!isMember) return BadRequest("User is not a member of this workspace");
+        }
+
+        var previousAssignee = deal.AssignedToUserId;
+        deal.AssignedToUserId = request.UserId;
+        deal.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        // Only notify on a genuine new assignment, not on every no-op PUT or
+        // on unassignment — matches deal_assigned's stated meaning.
+        if (request.UserId is not null && request.UserId != previousAssignee)
+            await notifications.Notify(current.WorkspaceId, request.UserId, "deal_assigned", "deal", deal.Id);
+
+        return Ok(ToDealDetailDto(deal));
     }
 
     [HttpPost("deals/{dealId}/score")]
@@ -196,9 +253,54 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             .Include(d => d.Company)
             .Include(d => d.Contacts)
             .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt))
+            .Include(d => d.AssignedToUser)
             .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
         if (deal is null) return NotFound();
         return Ok(ToDealDetailDto(deal));
+    }
+
+    // CreateDeal only accepts contact ids at creation time — this is the
+    // only way to associate an existing Contact with an already-created
+    // Deal (a real, previously-missing gap: this app could show a Deal's
+    // contacts but never let anyone add one after the fact).
+    [HttpPost("deals/{dealId}/contacts")]
+    public async Task<ActionResult<DealDetailDto>> AddContact(string dealId, AddDealContactRequest request)
+    {
+        var deal = await db.Deals
+            .Include(d => d.Stage)
+            .Include(d => d.Company)
+            .Include(d => d.Contacts)
+            .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt))
+            .Include(d => d.AssignedToUser)
+            .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
+        if (deal is null) return NotFound();
+
+        var contact = await db.Contacts
+            .FirstOrDefaultAsync(c => c.Id == request.ContactId && c.WorkspaceId == current.WorkspaceId && c.DeletedAt == null);
+        if (contact is null) return NotFound("Contact not found in this workspace");
+
+        if (!deal.Contacts.Any(c => c.Id == contact.Id))
+        {
+            deal.Contacts.Add(contact);
+            await db.SaveChangesAsync();
+        }
+        return Ok(ToDealDetailDto(deal));
+    }
+
+    [HttpDelete("deals/{dealId}/contacts/{contactId}")]
+    public async Task<IActionResult> RemoveContact(string dealId, string contactId)
+    {
+        var deal = await db.Deals.Include(d => d.Contacts)
+            .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
+        if (deal is null) return NotFound();
+
+        var contact = deal.Contacts.FirstOrDefault(c => c.Id == contactId);
+        if (contact is not null)
+        {
+            deal.Contacts.Remove(contact);
+            await db.SaveChangesAsync();
+        }
+        return NoContent();
     }
 
     [HttpPost("deals/{dealId}/summarize")]
@@ -238,6 +340,7 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             .Include(d => d.Company)
             .Include(d => d.Contacts)
             .Include(d => d.Activities.OrderByDescending(a => a.CreatedAt))
+            .Include(d => d.AssignedToUser)
             .FirstOrDefaultAsync(d => d.Id == dealId && d.WorkspaceId == current.WorkspaceId && d.DeletedAt == null);
         if (deal is null) return NotFound();
 
@@ -284,8 +387,11 @@ public class PipelineController(AppDbContext db, CurrentUser current) : Controll
             deal.AiSummarizedAt,
             activitiesSinceSummary,
             deal.Contacts.Select(c => string.Join(" ", new[] { c.FirstName, c.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)))).ToList(),
+            deal.Contacts.Select(c => new ContactOptionDto(c.Id, string.Join(" ", new[] { c.FirstName, c.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))))).ToList(),
             deal.Activities.Select(a => new ActivityDto(a.Id, a.Type, a.Body, a.CreatedAt)).ToList(),
-            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(deal.CustomFields) ?? []
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(deal.CustomFields) ?? [],
+            deal.AssignedToUserId,
+            deal.AssignedToUser?.Name ?? deal.AssignedToUser?.Email
         );
     }
 

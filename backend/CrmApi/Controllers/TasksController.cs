@@ -18,7 +18,7 @@ public class TasksController(AppDbContext db, CurrentUser current) : ControllerB
         [FromQuery] string? dealId, [FromQuery] string? contactId, [FromQuery] string? companyId,
         [FromQuery] bool includeCompleted = false)
     {
-        var query = db.Tasks.Where(t => t.WorkspaceId == current.WorkspaceId);
+        var query = db.Tasks.Include(t => t.AssignedToUser).Where(t => t.WorkspaceId == current.WorkspaceId);
         if (!string.IsNullOrWhiteSpace(dealId)) query = query.Where(t => t.DealId == dealId);
         if (!string.IsNullOrWhiteSpace(contactId)) query = query.Where(t => t.ContactId == contactId);
         if (!string.IsNullOrWhiteSpace(companyId)) query = query.Where(t => t.CompanyId == companyId);
@@ -47,6 +47,9 @@ public class TasksController(AppDbContext db, CurrentUser current) : ControllerB
             return BadRequest("Company not found in this workspace");
         if (request.DealId is not null && !await db.Deals.AnyAsync(d => d.Id == request.DealId && d.WorkspaceId == current.WorkspaceId))
             return BadRequest("Deal not found in this workspace");
+        if (request.AssignedToUserId is not null
+            && !await db.WorkspaceMembers.AnyAsync(m => m.UserId == request.AssignedToUserId && m.WorkspaceId == current.WorkspaceId))
+            return BadRequest("User is not a member of this workspace");
 
         var task = new TaskItem
         {
@@ -56,23 +59,36 @@ public class TasksController(AppDbContext db, CurrentUser current) : ControllerB
             ContactId = request.ContactId,
             CompanyId = request.CompanyId,
             DealId = request.DealId,
+            AssignedToUserId = request.AssignedToUserId,
         };
         db.Tasks.Add(task);
         await db.SaveChangesAsync();
+
+        if (request.AssignedToUserId is not null)
+        {
+            var user = await db.Users.FindAsync(request.AssignedToUserId);
+            task.AssignedToUser = user;
+        }
         return Ok(ToDto(task));
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<TaskDto>> Update(string id, UpdateTaskRequest request)
     {
-        var task = await db.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.WorkspaceId == current.WorkspaceId);
+        var task = await db.Tasks.Include(t => t.AssignedToUser).FirstOrDefaultAsync(t => t.Id == id && t.WorkspaceId == current.WorkspaceId);
         if (task is null) return NotFound();
         if (string.IsNullOrWhiteSpace(request.Title)) return BadRequest("Title is required");
+        if (request.AssignedToUserId is not null
+            && !await db.WorkspaceMembers.AnyAsync(m => m.UserId == request.AssignedToUserId && m.WorkspaceId == current.WorkspaceId))
+            return BadRequest("User is not a member of this workspace");
 
         task.Title = request.Title;
         task.DueAt = request.DueAt;
         task.CompletedAt = request.Completed ? (task.CompletedAt ?? DateTime.UtcNow) : null;
+        task.AssignedToUserId = request.AssignedToUserId;
         await db.SaveChangesAsync();
+
+        task.AssignedToUser = request.AssignedToUserId is null ? null : await db.Users.FindAsync(request.AssignedToUserId);
         return Ok(ToDto(task));
     }
 
@@ -87,5 +103,7 @@ public class TasksController(AppDbContext db, CurrentUser current) : ControllerB
         return NoContent();
     }
 
-    private static TaskDto ToDto(TaskItem t) => new(t.Id, t.Title, t.DueAt, t.CompletedAt, t.AiSuggested, t.ContactId, t.CompanyId, t.DealId);
+    private static TaskDto ToDto(TaskItem t) => new(
+        t.Id, t.Title, t.DueAt, t.CompletedAt, t.AiSuggested, t.ContactId, t.CompanyId, t.DealId,
+        t.AssignedToUserId, t.AssignedToUser?.Name ?? t.AssignedToUser?.Email);
 }

@@ -14,6 +14,7 @@ record NextBestActionPayload(string DealId, string WorkspaceId);
 record ImportContactsPayload(string CsvContent, Dictionary<string, string> ColumnMapping, string WorkspaceId);
 record RefreshReportsPayload(string WorkspaceId);
 record DeliverWebhookPayload(string DeliveryId);
+record SweepOverdueTasksPayload();
 
 // Runs in-process as a hosted service for local dev / a dedicated deployment.
 // ProcessBatchAsync is deliberately the unit both this loop and a future
@@ -146,11 +147,53 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
                 throw;
             }
         },
+        // The task_overdue notification type has existed since the
+        // notifications-and-digests skill's original design, but had no
+        // real trigger — this app has no periodic-job scheduler (nothing
+        // else in this codebase needs one; refresh_reports fires on writes,
+        // not a timer). Rather than bolt on a separate scheduler
+        // abstraction for one recurring job, this handler re-enqueues its
+        // own next run as its last step, using the FOR UPDATE SKIP LOCKED
+        // claim in ProcessBatchAsync to guarantee only one worker instance
+        // ever runs a given sweep. Cross-workspace by design (WorkspaceId
+        // null) — overdue tasks exist in every workspace, not one.
+        ["sweep_overdue_tasks"] = async (services, job) =>
+        {
+            var db = services.GetRequiredService<AppDbContext>();
+            var notifications = services.GetRequiredService<NotificationService>();
+            var queue = services.GetRequiredService<JobQueueService>();
+
+            var now = DateTime.UtcNow;
+            var overdueTasks = await db.Tasks
+                .Where(t => t.AssignedToUserId != null && t.CompletedAt == null && t.DueAt != null && t.DueAt < now)
+                .ToListAsync();
+
+            foreach (var task in overdueTasks)
+            {
+                // A sweep runs repeatedly forever, so it must not re-notify
+                // the same overdue task every cycle — check for a prior
+                // task_overdue notification for this task/assignee pair
+                // rather than tracking a separate "already notified" flag.
+                var alreadyNotified = await db.Notifications.AnyAsync(n =>
+                    n.Type == "task_overdue" && n.EntityType == "task" && n.EntityId == task.Id && n.UserId == task.AssignedToUserId);
+                if (alreadyNotified) continue;
+
+                await notifications.Notify(task.WorkspaceId, task.AssignedToUserId!, "task_overdue", "task", task.Id);
+            }
+
+            await queue.Enqueue("sweep_overdue_tasks", new SweepOverdueTasksPayload(), workspaceId: null, runAt: now.Add(OverdueSweepInterval));
+            return null;
+        },
     };
+
+    // 5 minutes is a modest, real cadence for this app's scale — not
+    // configurable yet since nothing has needed that.
+    private static readonly TimeSpan OverdueSweepInterval = TimeSpan.FromMinutes(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Job worker started");
+        await EnsureOverdueSweepScheduledAsync(stoppingToken);
         while (!stoppingToken.IsCancellationRequested)
         {
             int claimed;
@@ -168,6 +211,24 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
             }
         }
         logger.LogInformation("Job worker stopped");
+    }
+
+    // Called once at startup, not on every restart cycle indefinitely — if
+    // a sweep is already pending/processing (the common case: this app was
+    // already running), a second one is never scheduled on top of it. Only
+    // a genuinely fresh database (or one where every prior sweep somehow
+    // reached "succeeded"/"failed" — the handler above always re-enqueues,
+    // so that shouldn't normally happen) gets a new one seeded here.
+    private async Task EnsureOverdueSweepScheduledAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var alreadyScheduled = await db.Jobs.AnyAsync(
+            j => j.Type == "sweep_overdue_tasks" && (j.Status == "pending" || j.Status == "processing"), ct);
+        if (alreadyScheduled) return;
+
+        var queue = scope.ServiceProvider.GetRequiredService<JobQueueService>();
+        await queue.Enqueue("sweep_overdue_tasks", new SweepOverdueTasksPayload(), workspaceId: null);
     }
 
     public async Task<int> ProcessBatchAsync(CancellationToken ct, int batchSize = 5)

@@ -30,6 +30,85 @@ export async function logActivityAction(
   return {};
 }
 
+export async function assignDealAction(dealId: string, userId: string | null): Promise<void> {
+  const { api } = await requireWorkspace();
+  const { error } = await api.PUT("/api/deals/{dealId}/assign", {
+    params: { path: { dealId } },
+    body: { userId },
+  });
+  if (error) throw new Error("Could not assign this deal");
+  revalidatePath(`/pipeline/${dealId}`);
+}
+
+export async function addDealContactAction(dealId: string, contactId: string): Promise<void> {
+  const { api } = await requireWorkspace();
+  const { error } = await api.POST("/api/deals/{dealId}/contacts", {
+    params: { path: { dealId } },
+    body: { contactId },
+  });
+  if (error) throw new Error("Could not add this contact — it may not exist in this workspace");
+  revalidatePath(`/pipeline/${dealId}`);
+}
+
+export async function removeDealContactAction(dealId: string, contactId: string): Promise<void> {
+  const { api } = await requireWorkspace();
+  await api.DELETE("/api/deals/{dealId}/contacts/{contactId}", {
+    params: { path: { dealId, contactId } },
+  });
+  revalidatePath(`/pipeline/${dealId}`);
+}
+
+export type CreateTaskState = { error?: string };
+
+export async function createTaskAction(_prevState: CreateTaskState, formData: FormData): Promise<CreateTaskState> {
+  const { api } = await requireWorkspace();
+
+  const dealId = formData.get("dealId");
+  const title = formData.get("title");
+  if (typeof dealId !== "string" || typeof title !== "string" || !title.trim()) {
+    return { error: "Title is required" };
+  }
+  const dueAtRaw = (formData.get("dueAt") as string | null)?.trim() || null;
+  const assignedToUserId = (formData.get("assignedToUserId") as string | null)?.trim() || null;
+
+  const { error } = await api.POST("/api/tasks", {
+    body: {
+      title,
+      dueAt: dueAtRaw ? new Date(dueAtRaw).toISOString() : null,
+      dealId,
+      contactId: null,
+      companyId: null,
+      assignedToUserId,
+    },
+  });
+  if (error) return { error: "Could not create task" };
+
+  revalidatePath(`/pipeline/${dealId}`);
+  return {};
+}
+
+export async function toggleTaskCompleteAction(
+  dealId: string,
+  taskId: string,
+  title: string,
+  dueAt: string | null,
+  assignedToUserId: string | null,
+  completed: boolean,
+): Promise<void> {
+  const { api } = await requireWorkspace();
+  await api.PUT("/api/tasks/{id}", {
+    params: { path: { id: taskId } },
+    body: { title, dueAt, completed, assignedToUserId },
+  });
+  revalidatePath(`/pipeline/${dealId}`);
+}
+
+export async function deleteTaskAction(dealId: string, taskId: string): Promise<void> {
+  const { api } = await requireWorkspace();
+  await api.DELETE("/api/tasks/{id}", { params: { path: { id: taskId } } });
+  revalidatePath(`/pipeline/${dealId}`);
+}
+
 export async function draftEmailAction(dealId: string, instruction: string): Promise<{ jobId: string }> {
   const { api } = await requireWorkspace();
   const { data, error } = await api.POST("/api/deals/{dealId}/draft-email", {

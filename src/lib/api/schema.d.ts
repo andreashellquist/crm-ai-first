@@ -400,9 +400,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["CompanyDto"];
-                        "application/json": components["schemas"]["CompanyDto"];
-                        "text/json": components["schemas"]["CompanyDto"];
+                        "text/plain": components["schemas"]["CompanyDetailDto"];
+                        "application/json": components["schemas"]["CompanyDetailDto"];
+                        "text/json": components["schemas"]["CompanyDetailDto"];
                     };
                 };
             };
@@ -507,6 +507,64 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ContactDetailDto"];
+                        "application/json": components["schemas"]["ContactDetailDto"];
+                        "text/json": components["schemas"]["ContactDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -632,41 +690,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/contacts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         options?: never;
         head?: never;
         patch?: never;
@@ -1355,6 +1378,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{dealId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssignDealRequest"];
+                    "text/json": components["schemas"]["AssignDealRequest"];
+                    "application/*+json": components["schemas"]["AssignDealRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DealDetailDto"];
+                        "application/json": components["schemas"]["DealDetailDto"];
+                        "text/json": components["schemas"]["DealDetailDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{dealId}/score": {
         parameters: {
             query?: never;
@@ -1502,6 +1570,87 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{dealId}/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AddDealContactRequest"];
+                    "text/json": components["schemas"]["AddDealContactRequest"];
+                    "application/*+json": components["schemas"]["AddDealContactRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DealDetailDto"];
+                        "application/json": components["schemas"]["DealDetailDto"];
+                        "text/json": components["schemas"]["DealDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{dealId}/contacts/{contactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    dealId: string;
+                    contactId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -3028,6 +3177,9 @@ export interface components {
             /** Format: int32 */
             count: number | string;
         };
+        AddDealContactRequest: {
+            contactId: string;
+        };
         ApiKeyDto: {
             id: string;
             name: string;
@@ -3038,6 +3190,9 @@ export interface components {
             revokedAt: null | string;
             /** Format: date-time */
             createdAt: string;
+        };
+        AssignDealRequest: {
+            userId: null | string;
         };
         AuditLogDto: {
             id: string;
@@ -3051,11 +3206,54 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        CompanyDetailDealDto: {
+            id: string;
+            stageName: string;
+            /** Format: int32 */
+            amountCents: null | number | string;
+            currency: null | string;
+        };
+        CompanyDetailDto: {
+            id: string;
+            name: string;
+            domain: null | string;
+            customFields: Record<string, never>;
+            contacts: components["schemas"]["ContactOptionDto"][];
+            deals: components["schemas"]["CompanyDetailDealDto"][];
+        };
         CompanyDto: {
             id: string;
             name: string;
             domain: null | string;
             customFields: Record<string, never>;
+        };
+        ContactDetailActivityDto: {
+            id: string;
+            type: string;
+            body: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ContactDetailDealDto: {
+            id: string;
+            title: string;
+            stageName: string;
+            /** Format: int32 */
+            amountCents: null | number | string;
+            currency: null | string;
+        };
+        ContactDetailDto: {
+            id: string;
+            firstName: null | string;
+            lastName: null | string;
+            email: null | string;
+            phone: null | string;
+            lifecycleStage: string;
+            companyId: null | string;
+            companyName: null | string;
+            customFields: Record<string, never>;
+            activities: components["schemas"]["ContactDetailActivityDto"][];
+            deals: components["schemas"]["ContactDetailDealDto"][];
         };
         ContactDto: {
             id: string;
@@ -3095,6 +3293,10 @@ export interface components {
             deals: components["schemas"]["ContactExportDealDto"][];
             /** Format: date-time */
             exportedAt: string;
+        };
+        ContactOptionDto: {
+            id: string;
+            name: string;
         };
         CreateApiKeyRequest: {
             name: string;
@@ -3147,6 +3349,7 @@ export interface components {
             contactId: null | string;
             companyId: null | string;
             dealId: null | string;
+            assignedToUserId?: null | string;
         };
         CreateWebhookSubscriptionRequest: {
             url: string;
@@ -3203,8 +3406,11 @@ export interface components {
             /** Format: int32 */
             activitiesSinceSummary: number | string;
             contactNames: string[];
+            contacts: components["schemas"]["ContactOptionDto"][];
             activities: components["schemas"]["ActivityDto"][];
             customFields: Record<string, never>;
+            assignedToUserId: null | string;
+            assignedToUserName: null | string;
         };
         DraftEmailRequest: {
             instruction: null | string;
@@ -3231,6 +3437,12 @@ export interface components {
             dealValueCents: number | string;
             /** Format: int32 */
             weightedValueCents: number | string;
+        };
+        FunnelReportRow: {
+            stageId: string;
+            stageName: string;
+            /** Format: int32 */
+            entryCount: number | string;
         };
         GoogleExchangeRequest: {
             code: string;
@@ -3376,6 +3588,7 @@ export interface components {
             pipeline: components["schemas"]["PipelineReportRow"][];
             forecast: components["schemas"]["ForecastReportRow"][];
             activity: components["schemas"]["ActivityReportRow"][];
+            funnel: components["schemas"]["FunnelReportRow"][];
             /** Format: date-time */
             refreshedAt: null | string;
             refreshedAtDisplay: null | string;
@@ -3472,6 +3685,8 @@ export interface components {
             contactId: null | string;
             companyId: null | string;
             dealId: null | string;
+            assignedToUserId: null | string;
+            assignedToUserName: null | string;
         };
         UnreadCountResponse: {
             /** Format: int32 */
@@ -3519,6 +3734,7 @@ export interface components {
             /** Format: date-time */
             dueAt: null | string;
             completed: boolean;
+            assignedToUserId?: null | string;
         };
         UpdateWebhookSubscriptionRequest: {
             eventTypes: string[];

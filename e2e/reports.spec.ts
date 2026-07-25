@@ -14,6 +14,7 @@ test("loads the reports dashboard and refresh reaches a terminal state without c
 
   await expect(page.getByRole("heading", { name: "Deals by stage" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Forecast by category" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Funnel — stage entries" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Activity, last 30 days" })).toBeVisible();
 
   await page.getByRole("button", { name: "Refresh" }).click();
@@ -31,4 +32,17 @@ test("pipeline CSV export returns a well-formed CSV with the header row", async 
   expect(response.headers()["content-type"]).toContain("text/csv");
   const csv = await response.text();
   expect(csv.split("\n")[0]).toBe("Stage,Deal count,Deal value (cents),Weighted value (cents)");
+});
+
+// DealStageChange (append-only) + FunnelSnapshot (recomputed on refresh) are
+// new this pass — Deal previously only stored its current StageId, with no
+// timestamped history to build a conversion/funnel report from at all.
+test("funnel CSV export returns a well-formed CSV with the header row", async ({ page }) => {
+  await login(page);
+
+  const response = await page.request.get("/api/reports/export?type=funnel");
+  expect(response.ok()).toBeTruthy();
+  expect(response.headers()["content-type"]).toContain("text/csv");
+  const csv = await response.text();
+  expect(csv.split("\n")[0]).toBe("Stage,Entry count");
 });

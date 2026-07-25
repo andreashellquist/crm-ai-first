@@ -447,10 +447,57 @@ custom fields/contact ids the same way `UpdateDeal` does, and fires the new
 `deal.created` webhook event (`WebhookSubscriptionsController.ValidEventTypes`)
 alongside the existing `refresh_reports` enqueue. The pipeline board gained
 a "New deal" form (company name, stage picker, amount) above the columns.
-**Also still true, not addressed here**: there is likewise no endpoint to
-associate an existing `Contact` with an existing `Deal` after creation
-(`CreateDeal` accepts contact ids only at creation time) — a real, separate
-follow-up, not a hidden gap.
+Four more real gaps surfaced immediately after the above and are now closed
+too, all as full vertical slices (backend, xUnit coverage, frontend, e2e):
+
+- **Associating an existing Contact with an existing Deal.** `CreateDeal`
+  only ever accepted contact ids at creation time — there was no way to link
+  the two afterward. `PipelineController.AddContact`/`RemoveContact`
+  (`POST`/`DELETE /api/deals/{dealId}/contacts[/{contactId}]`) fix this; the
+  deal detail page's new "Contacts" section lists associated contacts (each
+  now a real link, see below) with an "Add a contact…" picker.
+- **Deal/task assignment**, unblocking the `deal_assigned`/`task_overdue`
+  notification triggers that had been sitting dead since the
+  `notifications-and-digests` pass because neither `Deal` nor `TaskItem` had
+  an owner column. `Deal.AssignedToUserId`/`TaskItem.AssignedToUserId` (both
+  nullable, `DeleteBehavior.SetNull`) plus `PipelineController.AssignDeal`
+  (`PUT /api/deals/{dealId}/assign`, a dedicated small-mutation endpoint
+  matching the `/move` pattern) fire `deal_assigned` only on a genuine new
+  non-null assignment. `task_overdue` needed an actual trigger mechanism,
+  since this app has no periodic-job scheduler at all: `JobQueueService.Enqueue`
+  gained an optional `runAt` parameter, and a new `sweep_overdue_tasks` job
+  handler (`JobWorker.cs`) is this app's first self-perpetuating recurring
+  job — it re-enqueues its own next run (5-minute interval) as its last step,
+  bootstrapped once at `JobWorker.ExecuteAsync` startup, and dedups against
+  an existing `task_overdue` `Notification` before notifying again each
+  sweep. `TasksController` (full CRUD since Phase 0/1) had zero frontend
+  callers anywhere in the app until now — the deal detail page's new "Tasks"
+  section (list/complete/delete/create, with an assignee picker) is the
+  first.
+- **Contact/company detail pages** — genuinely didn't exist before. New
+  `ContactDetailDto`/`CompanyDetailDto` (deliberately distinct from the flat
+  `ContactDto`/`CompanyDto` used by list/update, and from `ContactExportDto`
+  — the new `ContactsController.Get`/`CompaniesController.Get` are routine
+  viewing and must never write the `contact.exported` audit entry that's
+  reserved for genuine data-subject export requests) back `/contacts/{id}`
+  and `/companies/{id}`, each showing associated deals/activities (contact)
+  or contacts/deals (company). Global search results for both categories,
+  the contacts list's name column, and the deal detail page's contacts
+  section all link to these pages now instead of falling back to the
+  contacts list.
+- **Deal stage-transition history**, unblocking a conversion/funnel report.
+  `Deal` only ever stored its *current* `StageId` — no timestamped record of
+  how it got there. `DealStageChange` (append-only, `FromStageId` nullable —
+  null means initial placement at creation) is written by `CreateDeal` and
+  `MoveDeal` (only when the stage actually changes). `FunnelSnapshot` is a
+  new read model in the same fully-recomputed, delete-and-reinsert-on-refresh
+  family as `PipelineSnapshot`/`ForecastSnapshot`/`ActivityMetric`
+  (`ReportingService.RefreshWorkspaceReports`), grouping `DealStageChange` by
+  `(PipelineId, ToStageId)` — `EntryCount` ("how many times a deal has ever
+  entered this stage") is a different number from `PipelineSnapshot.DealCount`
+  ("how many deals are there right now"). `/reports` gained a "Funnel — stage
+  entries" section with the same bar-chart-plus-CSV-export treatment as the
+  other three reports.
 
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an
@@ -459,13 +506,9 @@ feature area; it says what phase the feature belongs to and which expert
 agent in `.claude/agents/` owns it. Notably not yet built: real OAuth
 credentials (the Google flow is fully wired end to end but
 `GoogleOAuth:ClientId`/`ClientSecret` ship blank — see `auth-security-expert`),
-any actual email/calendar send capability, RAG over CRM history, task/deal
-assignment (needed before `task_overdue`/`deal_assigned` notifications can
-exist), contact/company detail pages, associating an existing contact with
-an existing deal after creation, deal stage-transition history (needed
-before a conversion/funnel report can exist), AI-feature region controls
-(see `docs/REGIONAL_COMPLIANCE.md` §4), and the rest of Phase 2 (email/
-calendar sync with consent/suppression gating, billing — see
+any actual email/calendar send capability, RAG over CRM history, AI-feature
+region controls (see `docs/REGIONAL_COMPLIANCE.md` §4), and the rest of
+Phase 2 (email/calendar sync with consent/suppression gating, billing — see
 `docs/LOCALIZED_BILLING.md` for what that future billing build needs to get
 right on tax from day one). **Phase 4 is complete** — see the sub-areas
 above.

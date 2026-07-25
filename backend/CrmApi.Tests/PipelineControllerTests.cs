@@ -144,6 +144,176 @@ public class PipelineControllerTests(CrmApiFactory factory) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task CreateDeal_LogsInitialStageChangeWithNullFromStage()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PostAsJsonAsync("/api/deals",
+            new CreateDealRequest($"Co {Guid.NewGuid():N}", null, null, null, "pipeline", null, null));
+        response.EnsureSuccessStatusCode();
+        var created = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+
+        var change = await WithDb(db => db.DealStageChanges.SingleAsync(c => c.DealId == created!.Id));
+        Assert.Null(change.FromStageId);
+        Assert.Equal(ws.StageOne.Id, change.ToStageId);
+    }
+
+    [Fact]
+    public async Task MoveDeal_LogsStageChangeWithFromAndToStage()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/move", new MoveDealRequest(ws.StageTwo.Id));
+        response.EnsureSuccessStatusCode();
+
+        var change = await WithDb(db => db.DealStageChanges.SingleAsync(c => c.DealId == deal.Id));
+        Assert.Equal(ws.StageOne.Id, change.FromStageId);
+        Assert.Equal(ws.StageTwo.Id, change.ToStageId);
+    }
+
+    [Fact]
+    public async Task MoveDeal_ToSameStage_DoesNotLogAStageChange()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/move", new MoveDealRequest(ws.StageOne.Id));
+        response.EnsureSuccessStatusCode();
+
+        var count = await WithDb(db => db.DealStageChanges.CountAsync(c => c.DealId == deal.Id));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task AddContact_AssociatesAnExistingContactWithAnExistingDeal()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        var contact = TestData.Contact(ws.Workspace, "Jane");
+        await WithDb(async db =>
+        {
+            db.Deals.Add(deal);
+            db.Contacts.Add(contact);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/contacts", new AddDealContactRequest(contact.Id));
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.Contains("Jane", detail!.ContactNames);
+    }
+
+    [Fact]
+    public async Task AddContact_CalledTwice_DoesNotDuplicate()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        var contact = TestData.Contact(ws.Workspace, "Jane");
+        await WithDb(async db =>
+        {
+            db.Deals.Add(deal);
+            db.Contacts.Add(contact);
+            await db.SaveChangesAsync();
+        });
+
+        (await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/contacts", new AddDealContactRequest(contact.Id))).EnsureSuccessStatusCode();
+        (await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/contacts", new AddDealContactRequest(contact.Id))).EnsureSuccessStatusCode();
+
+        var contactCount = await WithDb(db => db.Deals.Where(d => d.Id == deal.Id).SelectMany(d => d.Contacts).CountAsync());
+        Assert.Equal(1, contactCount);
+    }
+
+    [Fact]
+    public async Task AddContact_UnknownContact_ReturnsNotFound()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PostAsJsonAsync($"/api/deals/{deal.Id}/contacts", new AddDealContactRequest(Guid.NewGuid().ToString("N")));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RemoveContact_DisassociatesTheContact()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var contact = TestData.Contact(ws.Workspace, "Jane");
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        deal.Contacts.Add(contact);
+        await WithDb(async db =>
+        {
+            db.Contacts.Add(contact);
+            db.Deals.Add(deal);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await ws.Client.DeleteAsync($"/api/deals/{deal.Id}/contacts/{contact.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var detail = await ws.Client.GetFromJsonAsync<DealDetailDto>($"/api/deals/{deal.Id}");
+        Assert.DoesNotContain("Jane", detail!.ContactNames);
+    }
+
+    [Fact]
+    public async Task AssignDeal_ToAWorkspaceMember_SetsAssigneeAndNotifies()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var assignee = TestData.User();
+        var assigneeMember = TestData.Member(ws.Workspace, assignee, "member");
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db =>
+        {
+            db.Users.Add(assignee);
+            db.WorkspaceMembers.Add(assigneeMember);
+            db.Deals.Add(deal);
+            await db.SaveChangesAsync();
+        });
+
+        var response = await ws.Client.PutAsJsonAsync($"/api/deals/{deal.Id}/assign", new AssignDealRequest(assignee.Id));
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.Equal(assignee.Id, detail!.AssignedToUserId);
+
+        var assigneeClient = AuthedClient(assignee.Id, ws.Workspace.Id, "member");
+        var notifications = await assigneeClient.GetFromJsonAsync<List<NotificationDto>>("/api/notifications");
+        Assert.Contains(notifications!, n => n.Type == "deal_assigned" && n.EntityId == deal.Id);
+    }
+
+    [Fact]
+    public async Task AssignDeal_ToNonMember_ReturnsBadRequest()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PutAsJsonAsync($"/api/deals/{deal.Id}/assign", new AssignDealRequest(Guid.NewGuid().ToString("N")));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AssignDeal_ToNull_ClearsAssignment()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var deal = TestData.Deal(ws.Workspace, ws.Pipeline, ws.StageOne);
+        deal.AssignedToUserId = ws.User.Id;
+        await WithDb(async db => { db.Deals.Add(deal); await db.SaveChangesAsync(); });
+
+        var response = await ws.Client.PutAsJsonAsync($"/api/deals/{deal.Id}/assign", new AssignDealRequest(null));
+
+        response.EnsureSuccessStatusCode();
+        var detail = await response.Content.ReadFromJsonAsync<DealDetailDto>();
+        Assert.Null(detail!.AssignedToUserId);
+    }
+
+    [Fact]
     public async Task MoveDeal_UpdatesStage()
     {
         var ws = await SeedWorkspaceAsync();

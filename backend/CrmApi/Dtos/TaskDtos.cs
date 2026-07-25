@@ -8,9 +8,11 @@ public record TaskDto(
     bool AiSuggested,
     string? ContactId,
     string? CompanyId,
-    string? DealId
+    string? DealId,
+    string? AssignedToUserId,
+    string? AssignedToUserName
 );
 
-public record CreateTaskRequest(string Title, DateTime? DueAt, string? ContactId, string? CompanyId, string? DealId);
+public record CreateTaskRequest(string Title, DateTime? DueAt, string? ContactId, string? CompanyId, string? DealId, string? AssignedToUserId = null);
 
-public record UpdateTaskRequest(string Title, DateTime? DueAt, bool Completed);
+public record UpdateTaskRequest(string Title, DateTime? DueAt, bool Completed, string? AssignedToUserId = null);

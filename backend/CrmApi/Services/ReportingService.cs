@@ -59,6 +59,24 @@ public class ReportingService(AppDbContext db)
             })
             .ToList();
 
+        // Funnel report: how many times a deal has ever entered each stage
+        // — computed from the append-only DealStageChange log, not from
+        // Deal's current StageId, so a deal that moved through and back out
+        // of a stage still counts as having entered it.
+        var stageChanges = await db.DealStageChanges
+            .Where(s => s.WorkspaceId == workspaceId)
+            .ToListAsync();
+        var funnelRows = stageChanges
+            .GroupBy(s => (s.PipelineId, s.ToStageId))
+            .Select(g => new FunnelSnapshot
+            {
+                WorkspaceId = workspaceId,
+                PipelineId = g.Key.PipelineId,
+                StageId = g.Key.ToStageId,
+                EntryCount = g.Count(),
+            })
+            .ToList();
+
         var windowStart = DateTime.UtcNow.AddDays(-ActivityWindowDays);
         var activities = await db.Activities
             .Where(a => a.WorkspaceId == workspaceId && a.CreatedAt >= windowStart)
@@ -78,10 +96,12 @@ public class ReportingService(AppDbContext db)
         await db.PipelineSnapshots.Where(s => s.WorkspaceId == workspaceId).ExecuteDeleteAsync();
         await db.ForecastSnapshots.Where(s => s.WorkspaceId == workspaceId).ExecuteDeleteAsync();
         await db.ActivityMetrics.Where(m => m.WorkspaceId == workspaceId).ExecuteDeleteAsync();
+        await db.FunnelSnapshots.Where(s => s.WorkspaceId == workspaceId).ExecuteDeleteAsync();
 
         db.PipelineSnapshots.AddRange(pipelineRows);
         db.ForecastSnapshots.AddRange(forecastRows);
         db.ActivityMetrics.AddRange(activityRows);
+        db.FunnelSnapshots.AddRange(funnelRows);
         await db.SaveChangesAsync();
         await tx.CommitAsync();
     }

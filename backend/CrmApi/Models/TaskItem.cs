@@ -14,10 +14,16 @@ public class TaskItem
     public string? ContactId { get; set; }
     public string? CompanyId { get; set; }
     public string? DealId { get; set; }
+    // Previously nothing modeled who a task belonged to — the task_overdue
+    // notification type existed only as a comment on Notification.Type with
+    // no real trigger, since there was no owner to notify. See
+    // JobWorker's sweep_overdue_tasks handler.
+    public string? AssignedToUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Workspace? Workspace { get; set; }
     public Contact? Contact { get; set; }
     public Company? Company { get; set; }
     public Deal? Deal { get; set; }
+    public User? AssignedToUser { get; set; }
 }
