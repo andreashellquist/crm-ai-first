@@ -17,7 +17,7 @@ namespace CrmApi.Controllers;
 // starting an SSO flow, same reasoning as AuthController.Login/
 // GoogleExchange.
 [ApiController]
-public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current, AuditLogService audit, ILogger<SsoController> logger) : ControllerBase
+public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current, AuditLogService audit, ISecretProtector secretProtector, ILogger<SsoController> logger) : ControllerBase
 {
     [HttpGet("api/workspace/sso")]
     [Authorize]
@@ -45,6 +45,7 @@ public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current,
         if (domainTaken) return Conflict($"\"{domain}\" is already connected to a different workspace");
 
         var connection = await db.SsoConnections.FirstOrDefaultAsync(c => c.WorkspaceId == current.WorkspaceId);
+        var encryptedSecret = secretProtector.Protect(request.ClientSecret);
         if (connection is null)
         {
             connection = new SsoConnection
@@ -52,7 +53,7 @@ public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current,
                 WorkspaceId = current.WorkspaceId,
                 Issuer = request.Issuer,
                 ClientId = request.ClientId,
-                ClientSecret = request.ClientSecret,
+                ClientSecret = encryptedSecret,
                 EmailDomain = domain,
             };
             db.SsoConnections.Add(connection);
@@ -61,7 +62,7 @@ public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current,
         {
             connection.Issuer = request.Issuer;
             connection.ClientId = request.ClientId;
-            connection.ClientSecret = request.ClientSecret;
+            connection.ClientSecret = encryptedSecret;
             connection.EmailDomain = domain;
         }
         connection.Enforced = request.Enforced;
@@ -154,7 +155,8 @@ public class SsoController(AppDbContext db, JwtService jwt, CurrentUser current,
         try
         {
             var discovery = await oidc.DiscoverAsync(connection.Issuer);
-            var tokens = await oidc.ExchangeCodeAsync(discovery, connection.ClientId, connection.ClientSecret, request.Code, request.RedirectUri);
+            var clientSecret = secretProtector.Unprotect(connection.ClientSecret);
+            var tokens = await oidc.ExchangeCodeAsync(discovery, connection.ClientId, clientSecret, request.Code, request.RedirectUri);
             userInfo = await oidc.GetUserInfoAsync(discovery, tokens.AccessToken);
         }
         catch (Exception ex)

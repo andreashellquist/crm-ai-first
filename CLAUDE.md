@@ -350,10 +350,11 @@ cascading the entry away (`DeleteBehavior.SetNull` in `AppDbContext.cs`) —
 an audit trail that can be deleted by deleting its actor isn't one. The
 readiness doc itself catalogs what else is real (multi-tenant isolation and
 RBAC — the hardest-to-retrofit pieces — have been correct since Phase 0) vs.
-what's a genuine, still-open gap: no dependency/vulnerability scanning in CI,
-no session/JWT revocation mechanism, `SsoConnection.ClientSecret`/
-`WebhookSubscription.Secret` still stored in plaintext, and — its main
-conclusion — that most of what's left is organizational/process work
+what's a genuine, still-open gap at the time it was written: no dependency/
+vulnerability scanning in CI, no session/JWT revocation mechanism,
+`SsoConnection.ClientSecret`/`WebhookSubscription.Secret` still stored in
+plaintext (closed shortly after — see below), and — its main conclusion —
+that most of what's left is organizational/process work
 (incident-response runbook, vendor/subprocessor management, a periodic
 access-review cadence) that cannot be shipped in a pull request, not an
 engineering backlog.
@@ -538,6 +539,24 @@ test's server-persistence check. Worth knowing for any future e2e test on a
 page that renders the shared app header (i.e. every authenticated page):
 `waitForResponse` keyed on HTTP method alone is not a safe way to wait for a
 specific Server Action's effect.
+
+The SOC 2 readiness doc's "encrypt third-party credentials at rest" gap —
+`SsoConnection.ClientSecret` and `WebhookSubscription.Secret` stored in
+plaintext — is now closed. `ISecretProtector`/`SecretProtector`
+(`Services/SecretProtector.cs`) wraps ASP.NET Core's built-in Data
+Protection API rather than a bespoke crypto scheme; `SsoController.Update`
+and `WebhookSubscriptionsController.Create`/`RegenerateSecret` encrypt
+before persisting, `SsoController.Exchange` and `JobWorker`'s
+`deliver_webhook` handler decrypt just before use. Both DTOs' shapes are
+unchanged (the webhook secret is still returned once at creation, same
+"shown once" pattern as `ApiKey` — only the DB row is now ciphertext), so
+no OpenAPI regen was needed. **Real, stated scope limit**: this uses Data
+Protection's default local key ring (a file on the app's own disk), fine
+for this app's current single-instance posture but not durable/shared
+across instances — a real multi-instance production deployment would need
+a shared key store (Azure Key Vault, Redis, a blob store) instead, not
+built here per the same "don't stand up speculative infra" discipline as
+everywhere else in this app.
 
 Everything else in `docs/PRODUCT_SCOPE.md` — functional scope, non-functional
 bar, phased roadmap, and the explicit assumptions made to resolve an

@@ -65,12 +65,13 @@ test("creates a new deal from the pipeline board and it lands in the first stage
   // useActionState's pending flips false as soon as createDealAction
   // returns, which can land slightly before Next.js finishes re-rendering
   // from the revalidatePath it triggered — give this its own generous
-  // window rather than relying on "Adding…" hiding alone. Also covers dev
-  // server JIT-compiling /pipeline on a genuinely cold first hit (this
-  // spec's own first test and accessibility.spec.ts's "pipeline board" scan
-  // already warm this route in a full suite run, but not when this spec
-  // runs in isolation).
-  await expect(page.locator('[data-testid^="deal-card-"]', { hasText: companyName })).toBeVisible({ timeout: 15_000 });
+  // window rather than relying on "Adding…" hiding alone. Verified via
+  // direct curl + xUnit that the backend create-and-persist path itself is
+  // reliable; this test has been observed needing just over 15s specifically
+  // when it lands ~30 tests into a single continuous dev-server run (never
+  // when run in isolation or early in a run) — 30s matches the same
+  // load-tolerant reasoning as ai-features.spec.ts's 45s AI-button waits.
+  await expect(page.locator('[data-testid^="deal-card-"]', { hasText: companyName })).toBeVisible({ timeout: 30_000 });
 });
 
 test("opens the deal detail page from the board", async ({ page }) => {

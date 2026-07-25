@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using CrmApi.Dtos;
 using CrmApi.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CrmApi.Tests;
 
@@ -23,6 +24,31 @@ public class WebhookTests(CrmApiFactory factory) : IntegrationTestBase(factory)
         Assert.False(string.IsNullOrWhiteSpace(body!.Secret));
         Assert.True(body.Subscription.IsActive);
         Assert.Contains("contact.created", body.Subscription.EventTypes);
+    }
+
+    // auth-security-expert's "encrypt third-party credentials at rest"
+    // follow-up — same DB-column-level proof as
+    // SsoControllerTests.Update_StoresClientSecretEncryptedAtRest.
+    // ContactCreated_DeliversSignedPayloadToSubscribedUrl below already
+    // proves the round trip works end-to-end (the signature it computes
+    // from the plaintext response secret matches what the server signed
+    // with, which only holds if delivery correctly decrypts first).
+    [Fact]
+    public async Task Create_StoresSecretEncryptedAtRest()
+    {
+        var ws = await SeedWorkspaceAsync();
+
+        var response = await ws.Client.PostAsJsonAsync("/api/webhook-subscriptions",
+            new CreateWebhookSubscriptionRequest("https://example.com/hooks/encrypted", ["contact.created"]));
+        response.EnsureSuccessStatusCode();
+        var body = (await response.Content.ReadFromJsonAsync<CreateWebhookSubscriptionResponse>())!;
+
+        var stored = await WithDb(db => db.WebhookSubscriptions.SingleAsync(s => s.Id == body.Subscription.Id));
+        Assert.NotEqual(body.Secret, stored.Secret);
+
+        using var scope = Factory.Services.CreateScope();
+        var secretProtector = scope.ServiceProvider.GetRequiredService<ISecretProtector>();
+        Assert.Equal(body.Secret, secretProtector.Unprotect(stored.Secret));
     }
 
     [Fact]

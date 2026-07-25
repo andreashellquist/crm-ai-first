@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using CrmApi.Dtos;
 using CrmApi.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CrmApi.Tests;
 
@@ -41,6 +42,26 @@ public class SsoControllerTests(CrmApiFactory factory) : IntegrationTestBase(fac
 
         var refetched = await ws.Client.GetFromJsonAsync<SsoConnectionDto>("/api/workspace/sso");
         Assert.Equal(domain, refetched!.EmailDomain);
+    }
+
+    // auth-security-expert's "encrypt third-party credentials at rest"
+    // follow-up — this is the DB-column-level proof; Update_...NeverEchoesSecret
+    // above only proves the HTTP response never leaks it.
+    [Fact]
+    public async Task Update_StoresClientSecretEncryptedAtRest()
+    {
+        var ws = await SeedWorkspaceAsync();
+        var domain = $"{Guid.NewGuid():N}.example";
+
+        var response = await ws.Client.PutAsJsonAsync("/api/workspace/sso", ValidRequest(domain));
+        response.EnsureSuccessStatusCode();
+
+        var stored = await WithDb(db => db.SsoConnections.SingleAsync(c => c.WorkspaceId == ws.Workspace.Id));
+        Assert.NotEqual("secret-abc", stored.ClientSecret);
+
+        using var scope = Factory.Services.CreateScope();
+        var secretProtector = scope.ServiceProvider.GetRequiredService<ISecretProtector>();
+        Assert.Equal("secret-abc", secretProtector.Unprotect(stored.ClientSecret));
     }
 
     [Fact]

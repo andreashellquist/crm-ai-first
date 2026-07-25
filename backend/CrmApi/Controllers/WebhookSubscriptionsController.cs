@@ -17,7 +17,7 @@ namespace CrmApi.Controllers;
 [ApiController]
 [Route("api/webhook-subscriptions")]
 [Authorize]
-public class WebhookSubscriptionsController(AppDbContext db, CurrentUser current) : ControllerBase
+public class WebhookSubscriptionsController(AppDbContext db, CurrentUser current, ISecretProtector secretProtector) : ControllerBase
 {
     public static readonly string[] ValidEventTypes =
     [
@@ -50,12 +50,14 @@ public class WebhookSubscriptionsController(AppDbContext db, CurrentUser current
         {
             WorkspaceId = current.WorkspaceId,
             Url = request.Url,
-            Secret = secret,
+            Secret = secretProtector.Protect(secret),
             EventTypes = eventTypes,
         };
         db.WebhookSubscriptions.Add(subscription);
         await db.SaveChangesAsync();
 
+        // The caller gets the raw secret (same "shown once" pattern as
+        // ApiKeysController) — only the DB row stores the encrypted form.
         return Ok(new CreateWebhookSubscriptionResponse(ToDto(subscription), secret));
     }
 
@@ -99,9 +101,10 @@ public class WebhookSubscriptionsController(AppDbContext db, CurrentUser current
             .FirstOrDefaultAsync(s => s.Id == id && s.WorkspaceId == current.WorkspaceId);
         if (subscription is null) return NotFound();
 
-        subscription.Secret = WebhookSigner.GenerateSecret();
+        var secret = WebhookSigner.GenerateSecret();
+        subscription.Secret = secretProtector.Protect(secret);
         await db.SaveChangesAsync();
-        return Ok(new RegenerateWebhookSecretResponse(subscription.Secret));
+        return Ok(new RegenerateWebhookSecretResponse(secret));
     }
 
     [HttpGet("{id}/deliveries")]

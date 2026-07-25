@@ -135,11 +135,13 @@ public class JobWorker(IServiceScopeFactory scopeFactory, ILogger<JobWorker> log
             try
             {
                 var httpClient = services.GetRequiredService<IHttpClientFactory>().CreateClient("webhooks");
+                var secretProtector = services.GetRequiredService<ISecretProtector>();
                 var request = new HttpRequestMessage(HttpMethod.Post, delivery.Subscription!.Url)
                 {
                     Content = new StringContent(delivery.Payload, System.Text.Encoding.UTF8, "application/json"),
                 };
-                request.Headers.Add("X-Crm-Signature", WebhookSigner.Sign(delivery.Subscription.Secret, delivery.Payload));
+                var secret = secretProtector.Unprotect(delivery.Subscription.Secret);
+                request.Headers.Add("X-Crm-Signature", WebhookSigner.Sign(secret, delivery.Payload));
                 request.Headers.Add("X-Crm-Event", delivery.EventType);
                 var response = await httpClient.SendAsync(request);
                 if (!response.IsSuccessStatusCode)
